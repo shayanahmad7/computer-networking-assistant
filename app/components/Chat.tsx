@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect, useState } from 'react'
 import { Message, useAssistant } from 'ai/react'
 import { Send, Loader2, User, Bot } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -9,8 +9,26 @@ import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 
 const Chat: React.FC = () => {
-  const { status, messages, input, submitMessage, handleInputChange } = useAssistant({ api: '/api/assistant' })
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+    const { status, messages: aiMessages, input, submitMessage, handleInputChange } = useAssistant({ api: '/api/assistant' })
+    const messagesEndRef = useRef<HTMLDivElement>(null)
+    const [messages, setMessages] = useState<Message[]>([])
+  
+    useEffect(() => {
+        const initialMessages: Message[] = [
+          {
+            id: 'initial-1',
+            content: "Your conversation with this tutor is being recorded. Data collected will not be published but will be analyzed to enhance the user experience in the future.",
+            role: 'assistant'
+          },
+          {
+            id: 'initial-2',
+            content: "What's on your mind?",
+            role: 'assistant'
+          }
+        ];
+      
+        setMessages([...initialMessages, ...aiMessages]);
+      }, [aiMessages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })

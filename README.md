@@ -90,6 +90,12 @@ Visit the application at [http://localhost:3000](http://localhost:3000).
 
 ## **Deployment**
 
+The application is deployed and available at:
+
+[https://computer-networking-assistant.vercel.app/](https://computer-networking-assistant.vercel.app/)
+
+---
+
 ## **Usage**
 
 1. Open the project in your browser.

@@ -2,37 +2,42 @@
 
 import React, { useRef, useEffect, useState } from 'react'
 import { Message, useAssistant } from 'ai/react'
-import { Send, Loader2, User, Bot } from 'lucide-react'
+import { Send, Loader2, User, Bot, StopCircle } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 
 const Chat: React.FC = () => {
-    const { status, messages: aiMessages, input, submitMessage, handleInputChange } = useAssistant({ api: '/api/assistant' })
-    const messagesEndRef = useRef<HTMLDivElement>(null)
-    const [messages, setMessages] = useState<Message[]>([])
-  
-    useEffect(() => {
-        const initialMessages: Message[] = [
-          {
-            id: 'initial-1',
-            content: "Your conversation with this tutor is being recorded. Data collected will not be published but will be analyzed to enhance the user experience in the future.",
-            role: 'assistant'
-          },
-          {
-            id: 'initial-2',
-            content: "What's on your mind?",
-            role: 'assistant'
-          }
-        ];
-      
-        setMessages([...initialMessages, ...aiMessages]);
-      }, [aiMessages]);
+  const { status, messages: aiMessages, input, submitMessage, handleInputChange, stop } = useAssistant({ api: '/api/assistant' })
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [messages, setMessages] = useState<Message[]>([])
+  const [isStreaming, setIsStreaming] = useState(false)
+
+  useEffect(() => {
+    const initialMessages: Message[] = [
+      {
+        id: 'initial-1',
+        content: "Your conversation with this tutor is being recorded. Data collected will not be published but will be analyzed to enhance the user experience in the future.",
+        role: 'assistant'
+      },
+      {
+        id: 'initial-2',
+        content: "What's on your mind?",
+        role: 'assistant'
+      }
+    ];
+
+    setMessages([...initialMessages, ...aiMessages]);
+  }, [aiMessages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  useEffect(() => {
+    setIsStreaming(status === 'in_progress')
+  }, [status])
 
   const renderMessage = (content: string) => {
     return (
@@ -72,6 +77,22 @@ const Chat: React.FC = () => {
     )
   }
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (isStreaming) {
+      await stop()
+      setIsStreaming(false)
+    } else if (input.trim()) {
+      setIsStreaming(true)
+      try {
+        await submitMessage()
+      } catch (error) {
+        console.error('Error submitting message:', error)
+        setIsStreaming(false)
+      }
+    }
+  }
+
   return (
     <div className="flex h-[600px] flex-col rounded-xl bg-gray-50 shadow-inner">
       <div className="flex-1 overflow-y-auto p-4">
@@ -99,8 +120,8 @@ const Chat: React.FC = () => {
             </div>
           </div>
         ))}
-        {status === 'in_progress' && (
-          <div className="flex justify-start">
+        {isStreaming && (
+          <div className="flex justify-start items-center mb-4">
             <div className="flex items-center rounded-full bg-white px-4 py-2 text-gray-800 shadow">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               AI is thinking...
@@ -111,10 +132,7 @@ const Chat: React.FC = () => {
       </div>
 
       <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          submitMessage()
-        }}
+        onSubmit={handleSubmit}
         className="border-t border-gray-200 bg-white p-4"
       >
         <div className="flex rounded-full bg-gray-100 shadow-inner">
@@ -123,16 +141,33 @@ const Chat: React.FC = () => {
             value={input}
             onChange={handleInputChange}
             placeholder="Ask about computer networking..."
-            disabled={status !== 'awaiting_message'}
+            disabled={isStreaming}
             className="flex-1 rounded-l-full bg-transparent px-6 py-3 focus:outline-none"
           />
           <button
             type="submit"
-            disabled={status !== 'awaiting_message'}
-            className="flex items-center rounded-r-full bg-blue-500 px-6 py-3 font-semibold text-white transition-colors hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 disabled:bg-gray-400"
+            disabled={!input.trim() && !isStreaming}
+            className={`flex items-center rounded-r-full px-6 py-3 font-semibold text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 ${
+              isStreaming
+                ? 'bg-red-500 hover:bg-red-600'
+                : input.trim()
+                  ? 'bg-blue-500 hover:bg-blue-600'
+                  : 'bg-gray-400 cursor-not-allowed'
+            }`}
           >
-            <Send className="mr-2 h-5 w-5" />
-            Send
+            {isStreaming ? (
+              <>
+                <StopCircle className="mr-2 h-5 w-5" />
+                <span className="sr-only">Stop generating</span>
+                <span aria-hidden="true">Stop</span>
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-5 w-5" />
+                <span className="sr-only">Send message</span>
+                <span aria-hidden="true">Send</span>
+              </>
+            )}
           </button>
         </div>
       </form>
@@ -141,3 +176,4 @@ const Chat: React.FC = () => {
 }
 
 export default Chat;
+

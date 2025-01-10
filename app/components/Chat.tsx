@@ -23,28 +23,28 @@ const Chat: React.FC = () => {
         rehypePlugins={[rehypeKatex]}
         className="prose prose-sm dark:prose-invert max-w-none"
         components={{
-          h1: ({ node, ...props }) => (
+          h1: ({ ...props }) => (
             <h1 className="text-2xl font-bold my-4 text-center" {...props} />
           ),
-          h2: ({ node, ...props }) => (
+          h2: ({ ...props }) => (
             <h2 className="text-xl font-bold my-3 text-center" {...props} />
           ),
-          h3: ({ node, ...props }) => (
+          h3: ({ ...props }) => (
             <h3 className="text-lg font-bold my-3" {...props} />
           ),
-          p: ({ node, ...props }) => (
+          p: ({ ...props }) => (
             <p className="my-2" {...props} />
           ),
-          ul: ({ node, ...props }) => (
+          ul: ({ ...props }) => (
             <ul className="my-2 space-y-1 list-disc pl-6" {...props} />
           ),
-          ol: ({ node, ...props }) => (
+          ol: ({ ...props }) => (
             <ol className="my-2 space-y-1 list-decimal pl-6" {...props} />
           ),
-          li: ({ node, ...props }) => (
+          li: ({ ...props }) => (
             <li className="leading-normal" {...props} />
           ),
-          blockquote: ({ node, ...props }) => (
+          blockquote: ({ ...props }) => (
             <blockquote className="border-l-4 border-gray-300 pl-4 my-2" {...props} />
           )
         }}

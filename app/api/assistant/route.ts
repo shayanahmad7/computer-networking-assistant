@@ -44,28 +44,11 @@ export async function POST(req: Request) {
           runResult?.status === 'requires_action' &&
           runResult.required_action?.type === 'submit_tool_outputs'
         ) {
-          const tool_outputs =
-            runResult.required_action.submit_tool_outputs.tool_calls.map(
-              (toolCall: { function: { name: string; arguments: string } }) => {
-                // Parse tool call arguments
-                const parameters = JSON.parse(toolCall.function.arguments);
-
-                switch (toolCall.function.name) {
-                  // Configure your tool calls here
-                  default:
-                    throw new Error(
-                      `Unknown tool call function: ${toolCall.function.name}`
-                    );
-                }
-              }
-            );
-
-          // Submit tool outputs
           runResult = await forwardStream(
             openai.beta.threads.runs.submitToolOutputsStream(
               threadId,
               runResult.id,
-              { tool_outputs }
+              { tool_outputs: [] } // No tool outputs to process
             )
           );
         }

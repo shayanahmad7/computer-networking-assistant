@@ -8,13 +8,13 @@ const openai = new OpenAI({
 
 const uri = process.env.MONGODB_URI || ''; // MongoDB connection string
 const client = new MongoClient(uri);
-let db: any;
+let db: any = null; // Using `any` to avoid unexpected strict type issues
 
 // Ensure MongoDB connection
 async function connectToDatabase() {
   if (!db) {
     await client.connect();
-    db = client.db('computer_networking_assistant');
+    db = client.db('computer_networking_assistant'); // Replace with your database name
   }
   return db;
 }
@@ -41,7 +41,7 @@ async function cancelActiveRuns(threadId: string) {
   }
 }
 
-async function saveMessageToDatabase(threadId: string, role: string, content: string) {
+async function saveMessageToDatabase(threadId: string, role: 'user' | 'assistant', content: string) {
   const db = await connectToDatabase();
   const collection = db.collection('messages');
 
@@ -56,7 +56,7 @@ async function saveMessageToDatabase(threadId: string, role: string, content: st
         },
       },
     },
-    { upsert: true } // Create the thread document if it doesn't exist
+    { upsert: true }
   );
 }
 
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
           // Forward run status with message deltas
           let runResult = await forwardStream(runStream);
 
-          // Save assistant response to the database
+          // Save assistant responses to the database
           if (runResult?.status === 'completed' && runResult.messages) {
             for (const message of runResult.messages) {
               if (message.role === 'assistant') {
@@ -114,7 +114,7 @@ export async function POST(req: Request) {
               openai.beta.threads.runs.submitToolOutputsStream(
                 threadId,
                 runResult.id,
-                { tool_outputs: [] } // No tool outputs to process
+                { tool_outputs: [] }
               )
             );
           }

@@ -1,6 +1,19 @@
 import { AssistantResponse } from 'ai';
 import OpenAI from 'openai';
-import { MongoClient } from 'mongodb';
+import { MongoClient, Db, Collection } from 'mongodb';
+
+// Define the structure of a message
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+}
+
+// Define the structure of the collection document
+interface Thread {
+  threadId: string;
+  messages: Message[];
+}
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
@@ -8,15 +21,16 @@ const openai = new OpenAI({
 
 const uri = process.env.MONGODB_URI || ''; // MongoDB connection string
 const client = new MongoClient(uri);
-let db: any = null; // Using `any` to avoid unexpected strict type issues
+let db: Db | null = null;
+let collection: Collection<Thread> | null = null;
 
 // Ensure MongoDB connection
 async function connectToDatabase() {
   if (!db) {
     await client.connect();
     db = client.db('computer_networking_assistant'); // Replace with your database name
+    collection = db.collection<Thread>('messages'); // Type-safe collection
   }
-  return db;
 }
 
 // Allow streaming responses up to 30 seconds
@@ -42,19 +56,20 @@ async function cancelActiveRuns(threadId: string) {
 }
 
 async function saveMessageToDatabase(threadId: string, role: 'user' | 'assistant', content: string) {
-  const db = await connectToDatabase();
-  const collection = db.collection('messages');
+  if (!collection) {
+    await connectToDatabase();
+  }
 
-  await collection.updateOne(
+  const message: Message = {
+    role,
+    content,
+    timestamp: new Date(),
+  };
+
+  await collection!.updateOne(
     { threadId },
     {
-      $push: {
-        messages: {
-          role,
-          content,
-          timestamp: new Date(),
-        },
-      },
+      $push: { messages: message },
     },
     { upsert: true }
   );

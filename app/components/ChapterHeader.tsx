@@ -17,7 +17,7 @@ const ChapterHeader = () => (
       <Image src="/book_cover.png" alt="Book Cover" width={80} height={80} className="rounded-full mb-4" />
       <h2 className="text-2xl font-bold mb-2 text-center">Tutor for Computer Networking: A Top-Down Approach</h2>
       <p className="text-gray-500 text-center max-w-2xl">
-        This "networking tutor," driven by ChatGPT, has been customized with this chapter of Computer Networking: a Top Down Approach.<br/>
+        This &quot;networking tutor,&quot; driven by ChatGPT, has been customized with this chapter of Computer Networking: a Top Down Approach.<br/>
         Thus, your interactions with this tutor will be informed by this chapter material.
       </p>
     </div>

@@ -8,8 +8,17 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 
-const Chat: React.FC = () => {
-  const { status, messages: aiMessages, input, submitMessage, handleInputChange, stop } = useAssistant({ api: '/api/assistant' })
+interface ChatProps {
+  assistantId: string;
+}
+
+const Chat: React.FC<ChatProps> = ({ assistantId }) => {
+  const { status, messages: aiMessages, input, submitMessage, handleInputChange, stop } = useAssistant({ 
+    api: '/api/assistant',
+    body: {
+      assistantId: assistantId
+    }
+  })
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [isStreaming, setIsStreaming] = useState(false)

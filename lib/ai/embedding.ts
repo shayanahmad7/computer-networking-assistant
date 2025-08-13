@@ -1,8 +1,8 @@
-import { embed, embedMany } from "ai";
-import { openai } from "@ai-sdk/openai";
+import OpenAI from "openai";
 import { getCollections } from "../db/mongodb";
 
-const embeddingModel = openai.embedding("text-embedding-3-small");
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "" });
+const embeddingModelName = "text-embedding-3-small";
 
 // Generate chunks from input text
 const generateChunks = (input: string): string[] => {
@@ -17,20 +17,21 @@ export const generateEmbeddings = async (
   value: string,
 ): Promise<Array<{ embedding: number[]; content: string }>> => {
   const chunks = generateChunks(value);
-  const { embeddings } = await embedMany({
-    model: embeddingModel,
-    values: chunks,
+  const inputs = chunks.map((c) => c.replace(/\n/g, " "));
+  const resp = await openai.embeddings.create({
+    model: embeddingModelName,
+    input: inputs,
   });
-  return embeddings.map((e, i) => ({ content: chunks[i], embedding: e }));
+  return resp.data.map((d, i) => ({ content: chunks[i], embedding: d.embedding as unknown as number[] }));
 };
 
 export const generateEmbedding = async (value: string): Promise<number[]> => {
   const input = value.replace(/\n/g, " ");
-  const { embedding } = await embed({
-    model: embeddingModel,
-    value: input,
+  const resp = await openai.embeddings.create({
+    model: embeddingModelName,
+    input,
   });
-  return embedding;
+  return resp.data[0].embedding as unknown as number[];
 };
 
 // MongoDB Atlas Vector Search implementation

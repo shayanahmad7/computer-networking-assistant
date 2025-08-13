@@ -46,9 +46,31 @@ export interface ChatThread {
   updatedAt: Date;
 }
 
+// ChatMemory: Vectorized snippets of prior conversation for retrieval
+export interface ChatMemory {
+  _id?: string;
+  threadId: string;
+  role: 'user' | 'assistant';
+  turn: number; // message index within the thread
+  content: string;
+  embedding: number[];
+  createdAt: Date;
+}
+
+// ThreadSummary: Running summary to compress long chats
+export interface ThreadSummary {
+  _id?: string;
+  threadId: string;
+  chapter: string;
+  summary: string;
+  updatedAt: Date;
+}
+
 let resourcesCollection: Collection<Resource>;
 let embeddingsCollection: Collection<Embedding>;
 let threadsCollection: Collection<ChatThread>;
+let chatMemoryCollection: Collection<ChatMemory>;
+let threadSummariesCollection: Collection<ThreadSummary>;
 
 export async function connectToDatabase() {
   if (!client) {
@@ -62,6 +84,8 @@ export async function connectToDatabase() {
     resourcesCollection = db.collection<Resource>('resources');
     embeddingsCollection = db.collection<Embedding>('embeddings');
     threadsCollection = db.collection<ChatThread>('chat_threads');
+    chatMemoryCollection = db.collection<ChatMemory>('chat_memory');
+    threadSummariesCollection = db.collection<ThreadSummary>('thread_summaries');
     
     // Ensure indexes
     await ensureIndexes();
@@ -82,6 +106,13 @@ async function ensureIndexes() {
     
     // Create compound index for chat threads
     await threadsCollection.createIndex({ sessionId: 1, chapter: 1 });
+
+    // Speed up chat memory lookups per thread
+    await chatMemoryCollection.createIndex({ threadId: 1, turn: 1 });
+    await chatMemoryCollection.createIndex({ content: 'text' });
+
+    // Summary per thread
+    await threadSummariesCollection.createIndex({ threadId: 1, chapter: 1 });
     
     // Vector search index for embeddings (Atlas Vector Search)
     // This should be created in Atlas UI or via Atlas API
@@ -97,5 +128,7 @@ export async function getCollections() {
     resources: resourcesCollection,
     embeddings: embeddingsCollection,
     threads: threadsCollection,
+    chatMemory: chatMemoryCollection,
+    threadSummaries: threadSummariesCollection,
   };
 }

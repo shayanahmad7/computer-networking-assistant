@@ -127,13 +127,13 @@ async function createVectorSearchIndex() {
     const client = new MongoClient(MONGODB_URI);
     await client.connect();
     const db = client.db('computer_networking_assistant');
-    const collection = db.collection('embeddings');
+    const embeddingsCol = db.collection('embeddings');
     const indexModel = {
       name: 'embedding_index',
       type: 'vectorSearch',
       definition: { fields: [{ type: 'vector', path: 'embedding', numDimensions: 1536, similarity: 'cosine' }] }
     };
-    const result = await collection.createSearchIndex(indexModel);
+    const result = await embeddingsCol.createSearchIndex(indexModel);
     console.log(`🎉 Index creation started: ${result}`);
     console.log('⏳ Waiting until the index becomes queryable...');
     let queryable = false;
@@ -142,6 +142,20 @@ async function createVectorSearchIndex() {
       const indexes = await cursor.toArray();
       if (indexes.length && indexes[0]?.queryable) queryable = true; else await new Promise(r => setTimeout(r, 5000));
     }
+    // Also create memory index on chat_memory
+    const chatMemoryCol = db.collection('chat_memory');
+    const memIndexModel = {
+      name: 'chat_memory_index',
+      type: 'vectorSearch',
+      definition: { fields: [{ type: 'vector', path: 'embedding', numDimensions: 1536, similarity: 'cosine' }] }
+    };
+    try {
+      const memResult = await chatMemoryCol.createSearchIndex(memIndexModel);
+      console.log(`🎉 Memory index creation started: ${memResult}`);
+    } catch (e) {
+      console.log('Memory index creation skipped:', e.message);
+    }
+
     await client.close();
     console.log('✅ Index is Active and queryable.');
     console.log('💡 Next: node scripts/ingest-chapter1.js');

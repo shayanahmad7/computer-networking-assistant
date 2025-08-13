@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "rag:create-index": "node scripts/create-vector-index.js"
+    "rag:create-index": "node scripts/create-vector-index.js",
+    "rag:backfill-memory": "node scripts/create-chat-memory-backfill.js"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.8",

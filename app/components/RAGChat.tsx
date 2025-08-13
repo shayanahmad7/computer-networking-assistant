@@ -30,6 +30,7 @@ export default function RAGChat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [threadId, setThreadId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -71,7 +72,7 @@ export default function RAGChat() {
       const response = await fetch('/api/rag-chapter1', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [...messages, userMessage] }),
+        body: JSON.stringify({ messages: [...messages, userMessage], threadId }),
       })
 
       if (!response.ok) {
@@ -79,6 +80,7 @@ export default function RAGChat() {
       }
 
       const data = await response.json()
+      if (data.threadId && !threadId) setThreadId(data.threadId)
       
       const assistantMessage: Message = {
         id: Date.now().toString() + '-assistant',

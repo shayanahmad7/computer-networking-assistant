@@ -1,5 +1,7 @@
 import OpenAI from 'openai';
 import { findRelevantContent } from "@/lib/ai/embedding";
+import { getCollections } from "@/lib/db/mongodb";
+import { nanoid } from "@/lib/utils";
 
 // Next.js API route configuration
 export const maxDuration = 30; // Allow up to 30 seconds for AI processing
@@ -27,13 +29,61 @@ const openai = new OpenAI({
 export async function POST(req: Request) {
   try {
     // Parse incoming message data
-    const { messages } = await req.json();
-    const lastMessage = messages[messages.length - 1];
+    const input: { messages: Array<{ role: 'user'|'assistant'; content: string }>; threadId?: string|null } = await req.json();
+    const lastMessage = input.messages[input.messages.length - 1];
     const userQuery = lastMessage?.content || '';
+    const threadId = input.threadId || nanoid();
     
     console.log('[RAG-CHAPTER1] User query:', userQuery);
 
-    // Search for relevant Chapter 1 content using MongoDB text search
+    // Load thread history and persist the new user message
+    const { threads, chatMemory, threadSummaries } = await getCollections();
+    await threads.updateOne(
+      { sessionId: threadId, chapter: 'chapter1' },
+      {
+        $setOnInsert: { createdAt: new Date() },
+        $set: { updatedAt: new Date() },
+        $push: { messages: { role: 'user', content: userQuery, timestamp: new Date() } }
+      },
+      { upsert: true }
+    );
+
+    const threadDoc = await threads.findOne({ sessionId: threadId, chapter: 'chapter1' });
+    const turnIndex = (threadDoc?.messages?.length || 0) + 1;
+    const history = (threadDoc?.messages || []).slice(-12); // keep recent turns for chronology
+
+    // Retrieve long-term memory: top N prior exchanges semantically related to this query
+    // Embed user query and search chat_memory using Atlas Vector Search (if memory exists)
+    let memoryContext = '';
+    try {
+      const priorCount = await chatMemory.countDocuments({ threadId });
+      if (priorCount > 0) {
+        const queryVec = await (await import('@/lib/ai/embedding')).generateEmbedding(userQuery);
+        const memoryHits = await chatMemory.aggregate<{
+          content: string;
+          role: 'user'|'assistant';
+          score: number;
+        }>([
+          {
+            $vectorSearch: {
+              queryVector: queryVec,
+              path: 'embedding',
+              numCandidates: 100,
+              limit: 6,
+              index: 'chat_memory_index'
+            }
+          },
+          { $project: { _id: 0, content: 1, role: 1, score: { $meta: 'vectorSearchScore' } } }
+        ]).toArray();
+        if (memoryHits.length > 0) {
+          memoryContext = memoryHits.map(h => `[${h.role}] ${h.content}`).join('\n');
+        }
+      }
+    } catch (e) {
+      console.log('[RAG-CHAPTER1] Memory retrieval skipped:', e);
+    }
+
+    // Search for relevant Chapter 1 content (vector + lexical hybrid)
     const searchResults = await findRelevantContent(userQuery, 4);
     console.log('[RAG-CHAPTER1] Found', searchResults.length, 'relevant results');
 
@@ -62,11 +112,18 @@ ${contextText}
 
 Use this context as authoritative for wording and definitions.` : 'No specific Chapter 1 passages were found for this query. Answer using only Chapter 1 knowledge.'}`;
 
+    const summaryDoc = await threadSummaries.findOne({ threadId, chapter: 'chapter1' });
+    const summaryBlock = summaryDoc?.summary ? `\n\nConversation summary (so far):\n${summaryDoc.summary}` : '';
+    const memoryBlock = memoryContext
+      ? `\n\nRelevant prior conversation excerpts:\n${memoryContext}`
+      : '';
+
     // Get AI response
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: systemPrompt + summaryBlock + memoryBlock },
+        ...history.map(m => ({ role: m.role, content: m.content } as { role: 'user'|'assistant'; content: string })),
         { role: "user", content: userQuery }
       ],
       temperature: 0.7,
@@ -77,10 +134,45 @@ Use this context as authoritative for wording and definitions.` : 'No specific C
     
     console.log('[RAG-CHAPTER1] Response generated, length:', aiResponse.length);
 
+    // Save assistant message
+    await threads.updateOne(
+      { sessionId: threadId, chapter: 'chapter1' },
+      {
+        $set: { updatedAt: new Date() },
+        $push: { messages: { role: 'assistant', content: aiResponse, timestamp: new Date() } }
+      }
+    );
+
+    // Store chat memory embeddings for long-term retrieval
+    try {
+      const { generateEmbeddings } = await import('@/lib/ai/embedding');
+      const items = [
+        { role: 'user' as const, content: userQuery },
+        { role: 'assistant' as const, content: aiResponse }
+      ];
+      const embeddings = await Promise.all(items.map(async (it) => ({
+        role: it.role,
+        content: it.content,
+        embedding: await (await import('@/lib/ai/embedding')).generateEmbedding(it.content)
+      })));
+      const docs = embeddings.map((e, idx) => ({
+        threadId,
+        role: e.role,
+        turn: turnIndex + idx,
+        content: e.content,
+        embedding: e.embedding,
+        createdAt: new Date()
+      }));
+      await chatMemory.insertMany(docs);
+    } catch (e) {
+      console.log('[RAG-CHAPTER1] Memory write skipped:', e);
+    }
+
     return Response.json({
       content: aiResponse,
       searchResults: searchResults.length,
-      hasContext: contextText.length > 0
+      hasContext: contextText.length > 0,
+      threadId
     });
 
   } catch (error: unknown) {
@@ -91,4 +183,16 @@ Use this context as authoritative for wording and definitions.` : 'No specific C
       { status: 500 }
     );
   }
+}
+
+// Fetch a thread's messages
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const threadId = searchParams.get('threadId');
+  if (!threadId) {
+    return Response.json({ error: 'threadId is required' }, { status: 400 });
+  }
+  const { threads } = await getCollections();
+  const thread = await threads.findOne({ sessionId: threadId, chapter: 'chapter1' });
+  return Response.json({ messages: thread?.messages || [] });
 }

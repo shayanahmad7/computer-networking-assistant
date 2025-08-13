@@ -97,7 +97,7 @@ export const findRelevantContent = async (userQuery: string, limit: number = 4) 
           .toArray();
         textResults = tr.map((r: { content: string; id?: string; _id?: { toString?: () => string } }) => ({
           content: r.content,
-          id: r.id || r._id?.toString()
+          id: r.id || r._id?.toString?.()
         }));
         console.log('[EMBEDDING] Text candidates:', textResults.length);
       }
@@ -113,7 +113,7 @@ export const findRelevantContent = async (userQuery: string, limit: number = 4) 
           return strong.map((s: { content: string; id?: string; _id?: { toString?: () => string } }) => ({
             name: s.content,
             similarity: 1.0,
-            resourceId: s.id || s._id?.toString()
+            resourceId: s.id || s._id?.toString?.()
           }));
         }
       }

@@ -47,22 +47,21 @@ export const findRelevantContent = async (userQuery: string, limit: number = 4) 
     console.log('[EMBEDDING] Embeddings available:', embeddingCount);
     console.log('[EMBEDDING] Resources available:', resourceCount);
 
+    // Always run vector search when embeddings exist, but also run a precise lexical search
+    let fused: Array<{ resourceId?: string; name: string; score: number }> = [];
     if (embeddingCount > 0) {
       console.log('[EMBEDDING] Using VECTOR SEARCH (True RAG)');
-      
-      // Generate embedding for user query
       const userQueryEmbedded = await generateEmbedding(userQuery);
-
+      let vectorResults: Array<{ content: string; resourceId?: string; score: number }> = [];
       try {
-        // Use REAL Atlas Vector Search
         console.log('[EMBEDDING] Using Atlas Vector Search (REAL vector search)');
-        const vectorResults = await embeddings.aggregate([
+        vectorResults = await embeddings.aggregate([
           {
             $vectorSearch: {
               queryVector: userQueryEmbedded,
               path: "embedding",
-              numCandidates: 100,
-              limit: limit,
+              numCandidates: 200,
+              limit: Math.max(limit, 8),
               index: "embedding_index"
             }
           },
@@ -75,22 +74,90 @@ export const findRelevantContent = async (userQuery: string, limit: number = 4) 
             }
           }
         ]).toArray();
-
-        if (vectorResults.length > 0) {
-          console.log('[EMBEDDING] ✅ Atlas Vector Search successful:', vectorResults.length, 'results');
-          console.log(`[EMBEDDING] Top similarity scores: ${vectorResults.slice(0, 3).map(r => r.score.toFixed(4)).join(', ')}`);
-          return vectorResults.map(result => ({
-            name: result.content,
-            similarity: result.score,
-            resourceId: result.resourceId
-          }));
-        } else {
-          throw new Error('Vector search returned no results');
-        }
+        console.log('[EMBEDDING] Vector candidates:', vectorResults.length);
       } catch (vectorError: unknown) {
         const msg = vectorError instanceof Error ? vectorError.message : 'Unknown error';
         console.error('[EMBEDDING] ❌ Atlas Vector Search failed:', msg);
-        throw new Error(`Vector search failed: ${msg}. Make sure the embedding_index exists in Atlas.`);
+      }
+
+      // Lexical search (regex) with problem-id boosting (e.g., P1, R1)
+      const explicitIds = Array.from(new Set((userQuery.match(/\b[PR]\d+\b/gi) || []).map(s => s.toUpperCase())));
+      const regexTerms = userQuery
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(term => term.length > 2)
+        .join('|');
+      const idPattern = explicitIds.length > 0 ? explicitIds.join('|') : '';
+      const combined = [idPattern, regexTerms].filter(Boolean).join('|');
+
+      let textResults: Array<{ content: string; id?: string }> = [];
+      if (combined) {
+        const tr = await resources.find({ content: { $regex: combined, $options: 'i' } })
+          .limit(Math.max(limit, 12))
+          .toArray();
+        textResults = tr.map((r: { content: string; id?: string; _id?: { toString?: () => string } }) => ({
+          content: r.content,
+          id: r.id || r._id?.toString()
+        }));
+        console.log('[EMBEDDING] Text candidates:', textResults.length);
+      }
+
+      // If query contains explicit IDs (e.g., P1, R3), run a strong anchored match to pull exact statements
+      if (explicitIds.length > 0) {
+        const idAnchors = explicitIds.map(id => id.split('').join('\\s*'));
+        const strongExpr = `(^|\\n|\\r)\\s*(?:Problem\\s*)?(?:${idAnchors.join('|')})\\s*[\\.:\\-\\)]`;
+        const strong = await resources.find({ content: { $regex: strongExpr, $options: 'im' } })
+          .limit(limit)
+          .toArray();
+        if (strong.length > 0) {
+          return strong.map((s: { content: string; id?: string; _id?: { toString?: () => string } }) => ({
+            name: s.content,
+            similarity: 1.0,
+            resourceId: s.id || s._id?.toString()
+          }));
+        }
+      }
+
+      // Reciprocal Rank Fusion (RRF) with simple weighting (vector 0.6, text 0.4)
+      const rankConstant = 60;
+      const vectorScores = new Map<string, number>();
+      vectorResults.forEach((r, idx) => {
+        const key = r.resourceId || `${r.content.slice(0, 50)}_${idx}`;
+        const rr = 1 / (idx + 1 + rankConstant);
+        const weighted = 0.6 * rr;
+        vectorScores.set(key, (vectorScores.get(key) || 0) + weighted);
+      });
+
+      const textScores = new Map<string, { score: number; content: string }>();
+      textResults.forEach((r, idx) => {
+        const key = r.id || `${r.content.slice(0, 50)}_${idx}`;
+        const rr = 1 / (idx + 1 + rankConstant);
+        // Boost if explicit problem ids are present
+        const containsId = explicitIds.some(id => r.content.toUpperCase().includes(id));
+        const weight = containsId ? 0.8 : 0.4;
+        const weighted = weight * rr;
+        textScores.set(key, { score: (textScores.get(key)?.score || 0) + weighted, content: r.content });
+      });
+
+      const fusedMap = new Map<string, { score: number; content: string }>();
+      // Bring in vector results
+      vectorResults.forEach((r, idx) => {
+        const key = r.resourceId || `${r.content.slice(0, 50)}_${idx}`;
+        fusedMap.set(key, { score: (fusedMap.get(key)?.score || 0) + (vectorScores.get(key) || 0), content: r.content });
+      });
+      // Merge text results
+      for (const [key, val] of textScores.entries()) {
+        const existing = fusedMap.get(key);
+        fusedMap.set(key, { score: (existing?.score || 0) + val.score, content: existing?.content || val.content });
+      }
+
+      fused = Array.from(fusedMap.entries())
+        .sort((a, b) => b[1].score - a[1].score)
+        .slice(0, limit)
+        .map(([key, v]) => ({ resourceId: key, name: v.content, score: v.score }));
+
+      if (fused.length > 0) {
+        return fused.map(r => ({ name: r.name, similarity: r.score, resourceId: r.resourceId }));
       }
     }
 

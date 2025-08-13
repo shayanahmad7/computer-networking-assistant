@@ -10,6 +10,7 @@ const { MongoClient } = require('mongodb');
 // Use the API keys from environment (no hardcoded values)
 const PUBLIC_KEY = process.env.ATLAS_PUBLIC_KEY;
 const PRIVATE_KEY = process.env.ATLAS_PRIVATE_KEY;
+const EMBED_MODEL = process.env.EMBED_MODEL || 'text-embedding-3-large';
 
 if (!PUBLIC_KEY || !PRIVATE_KEY) {
   console.error('❌ Missing ATLAS_PUBLIC_KEY or ATLAS_PRIVATE_KEY in environment');
@@ -25,6 +26,14 @@ function getClusterName(uri) {
     return 'Cluster0';
   }
   return clusterName;
+}
+
+function dimsForModel(model) {
+  // Verified per OpenAI docs: text-embedding-3-small=1536, text-embedding-3-large=3072
+  if (model === 'text-embedding-3-large') return 3072;
+  if (model === 'text-embedding-3-small') return 1536;
+  // Default to 1536 if unknown
+  return 1536;
 }
 
 // Create HTTP Digest Auth header
@@ -121,64 +130,46 @@ async function createVectorSearchIndex() {
   if (!clusterName) throw new Error('Could not extract cluster name from MONGODB_URI');
   console.log(`🎯 Cluster Name: ${clusterName}`);
 
-  // Preferred: Node driver helper
-  try {
-    console.log('🔌 Using MongoDB Node driver to create the index');
-    const client = new MongoClient(MONGODB_URI);
-    await client.connect();
-    const db = client.db('computer_networking_assistant');
-    const embeddingsCol = db.collection('embeddings');
-    const indexModel = {
-      name: 'embedding_index',
-      type: 'vectorSearch',
-      definition: { fields: [{ type: 'vector', path: 'embedding', numDimensions: 1536, similarity: 'cosine' }] }
-    };
-    const result = await embeddingsCol.createSearchIndex(indexModel);
-    console.log(`🎉 Index creation started: ${result}`);
-    console.log('⏳ Waiting until the index becomes queryable...');
-    let queryable = false;
-    while (!queryable) {
-      const cursor = collection.listSearchIndexes(result);
-      const indexes = await cursor.toArray();
-      if (indexes.length && indexes[0]?.queryable) queryable = true; else await new Promise(r => setTimeout(r, 5000));
-    }
-    // Also create memory index on chat_memory
-    const chatMemoryCol = db.collection('chat_memory');
-    const memIndexModel = {
-      name: 'chat_memory_index',
-      type: 'vectorSearch',
-      definition: { fields: [{ type: 'vector', path: 'embedding', numDimensions: 1536, similarity: 'cosine' }] }
-    };
-    try {
-      const memResult = await chatMemoryCol.createSearchIndex(memIndexModel);
-      console.log(`🎉 Memory index creation started: ${memResult}`);
-    } catch (e) {
-      console.log('Memory index creation skipped:', e.message);
-    }
+// Preferred: Node driver helper (create or update)
+console.log('🔌 Using MongoDB Node driver to create or update indexes');
+const client = new MongoClient(MONGODB_URI);
+await client.connect();
+const db = client.db('computer_networking_assistant');
+const embeddingsCol = db.collection('embeddings');
+const chatMemoryCol = db.collection('chat_memory');
+const numDimensions = dimsForModel(EMBED_MODEL);
+console.log(`🧠 Embedding model: ${EMBED_MODEL} → dims=${numDimensions}`);
 
-    await client.close();
-    console.log('✅ Index is Active and queryable.');
-    console.log('💡 Next: node scripts/ingest-chapter1.js');
-    return { name: result };
-  } catch (e) {
-    console.error('❌ Driver-based index creation failed:', e.message);
-    console.log('🔁 Falling back to Atlas Admin API (Digest Auth)...');
-  }
+// Embeddings index
+const embeddingIndexName = 'embedding_index';
+const embeddingDef = { fields: [{ type: 'vector', path: 'embedding', numDimensions, similarity: 'cosine' }] };
+const embExisting = await embeddingsCol.listSearchIndexes(embeddingIndexName).toArray();
+if (embExisting.length > 0) {
+  console.log('ℹ️ embedding_index exists. Requesting update...');
+  await embeddingsCol.updateSearchIndex(embeddingIndexName, embeddingDef);
+  console.log('🔄 embedding_index update requested (rebuild will occur in background).');
+} else {
+  const created = await embeddingsCol.createSearchIndex({ name: embeddingIndexName, type: 'vectorSearch', definition: embeddingDef });
+  console.log(`🎉 embedding_index creation started: ${created}`);
+}
 
-  const PROJECT_ID = await findProjectIdForCluster(clusterName);
-  const indexDefinition = {
-    database: 'computer_networking_assistant',
-    collectionName: 'embeddings',
-    type: 'vectorSearch',
-    name: 'embedding_index',
-    definition: { fields: [{ type: 'vector', path: 'embedding', numDimensions: 1536, similarity: 'cosine' }] }
-  };
-  const path = `/api/atlas/v2/groups/${PROJECT_ID}/clusters/${clusterName}/search/indexes`;
-  const result = await makeAtlasRequest(path, 'POST', indexDefinition);
-  console.log('🎉 Vector Search Index created via Admin API');
-  console.log(result);
-  console.log('💡 Next: node scripts/ingest-chapter1.js');
-  return result;
+// Chat memory index
+const memIndexName = 'chat_memory_index';
+const memDef = { fields: [{ type: 'vector', path: 'embedding', numDimensions, similarity: 'cosine' }] };
+const memExisting = await chatMemoryCol.listSearchIndexes(memIndexName).toArray();
+if (memExisting.length > 0) {
+  console.log('ℹ️ chat_memory_index exists. Requesting update...');
+  await chatMemoryCol.updateSearchIndex(memIndexName, memDef);
+  console.log('🔄 chat_memory_index update requested (rebuild will occur in background).');
+} else {
+  const memCreated = await chatMemoryCol.createSearchIndex({ name: memIndexName, type: 'vectorSearch', definition: memDef });
+  console.log(`🎉 chat_memory_index creation started: ${memCreated}`);
+}
+
+await client.close();
+console.log('✅ Index operations submitted. Atlas may take a minute to finish building.');
+console.log('💡 Next: npm run rag:ingest-structured');
+return { name: embeddingIndexName };
 }
 
 createVectorSearchIndex().catch(console.error);

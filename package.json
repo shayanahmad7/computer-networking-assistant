@@ -8,10 +8,12 @@
     "start": "next start",
     "lint": "next lint",
     "rag:create-index": "node scripts/create-vector-index.js",
-    "rag:backfill-memory": "node scripts/create-chat-memory-backfill.js"
+    "rag:backfill-memory": "node scripts/create-chat-memory-backfill.js",
+    "rag:ingest-structured": "node scripts/ingest-chapter-structured.js"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.8",
+    "@dqbd/tiktoken": "^1.0.22",
     "@tailwindcss/typography": "^0.5.16",
     "ai": "^4.0.32",
     "clsx": "^2.1.1",

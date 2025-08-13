@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { getCollections } from "../db/mongodb";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "" });
-const embeddingModelName = "text-embedding-3-small";
+const embeddingModelName = process.env.EMBED_MODEL || "text-embedding-3-large";
 
 // Generate chunks from input text
 const generateChunks = (input: string): string[] => {

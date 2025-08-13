@@ -103,6 +103,30 @@ export default function RAGChat() {
   }
 
   const renderMessage = (content: string) => {
+    const normalizeMath = (text: string) => {
+      let t = text;
+      t = t.replace(/\\\[([\s\S]*?)\\\]/g, (_m, expr) => `$$${expr}$$`);
+      t = t.replace(/\\\(([^\)]*?)\\\)/g, (_m, expr) => `$${expr}$`);
+      t = t.replace(/(^|\n)\s*\[\s*([^\]]+?)\s*\](?=\s*($|\n))/g, (_m, p1, expr) => `${p1}$$${expr}$$`);
+      return t;
+    };
+    const normalizeLists = (text: string) => {
+      const lines = text.split(/\n/);
+      const out: string[] = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const subpart = /^\s*(?:\(([a-zA-Z0-9]+)\)|([a-zA-Z0-9]+)[\.)])\s+/.exec(line);
+        if (subpart) {
+          if (!/^\s*[-*+]\s+/.test(line) && !/^\s*\d+\./.test(line)) {
+            out.push(line.replace(/^\s*/, '- '));
+            continue;
+          }
+        }
+        out.push(line);
+      }
+      return out.join('\n');
+    };
+    const prettify = (text: string) => normalizeLists(normalizeMath(text));
     return (
       <ReactMarkdown
         remarkPlugins={[remarkMath]}
@@ -135,7 +159,7 @@ export default function RAGChat() {
           )
         }}
       >
-        {content}
+        {prettify(content)}
       </ReactMarkdown>
     )
   }

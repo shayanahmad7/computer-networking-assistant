@@ -70,7 +70,8 @@ export async function POST(req: Request) {
               path: 'embedding',
               numCandidates: 100,
               limit: 6,
-              index: 'chat_memory_index'
+              index: 'chat_memory_index',
+              filter: { threadId }
             }
           },
           { $project: { _id: 0, content: 1, role: 1, score: { $meta: 'vectorSearchScore' } } }
@@ -103,6 +104,8 @@ Teaching policy:
 - Never say you "don’t have access". If the exact text isn’t present, ask a short clarifying question or answer with the best Chapter 1 knowledge you have.
 - Prefer concise, structured explanations, with small examples.
 - When relevant, name the concept and relate it back to Chapter 1 sections.
+- If the user asks for "next parts" of a problem, you must look in the provided context for the subsequent subparts (e.g., parts c, d, e) and continue in order. If they are not present, explicitly say which parts are not available and ask if you should proceed with general guidance.
+- Math formatting: render inline math with $...$ and display math with $$...$$. Avoid other delimiters like [ ... ].
 
 Key Chapter 1 topics include: Internet structure, protocols, network edge/core, packet vs. circuit switching, delay/throughput, protocol layers, and basic security.
 

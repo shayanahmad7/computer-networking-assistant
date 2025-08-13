@@ -87,9 +87,10 @@ export const findRelevantContent = async (userQuery: string, limit: number = 4) 
         } else {
           throw new Error('Vector search returned no results');
         }
-      } catch (vectorError) {
-        console.error('[EMBEDDING] ❌ Atlas Vector Search failed:', vectorError.message);
-        throw new Error(`Vector search failed: ${vectorError.message}. Make sure the embedding_index exists in Atlas.`);
+      } catch (vectorError: unknown) {
+        const msg = vectorError instanceof Error ? vectorError.message : 'Unknown error';
+        console.error('[EMBEDDING] ❌ Atlas Vector Search failed:', msg);
+        throw new Error(`Vector search failed: ${msg}. Make sure the embedding_index exists in Atlas.`);
       }
     }
 

@@ -1,7 +1,6 @@
 import { embed, embedMany } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { getCollections } from "../db/mongodb";
-import { nanoid } from "../utils";
 
 const embeddingModel = openai.embedding("text-embedding-3-small");
 
@@ -116,19 +115,12 @@ export const findRelevantContent = async (userQuery: string, limit: number = 4) 
   }
 };
 
-// Helper function for cosine similarity
-function cosineSimilarity(vecA: number[], vecB: number[]): number {
-  const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
-  const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
-  const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
-  return dotProduct / (magnitudeA * magnitudeB);
-}
+// (cosineSimilarity helper removed — not used)
 
 // Function to create the Atlas Vector Search index programmatically
 export async function createVectorSearchIndex() {
   try {
-    const collections = await getCollections();
-    
+    // Provide the index definition for reference/logging
     const indexDefinition = {
       name: "embedding_index",
       definition: {

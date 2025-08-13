@@ -82,10 +82,11 @@ Use this context when relevant, but you can also draw from your general networki
       hasContext: contextText.length > 0
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
     console.error('[RAG-CHAPTER1] Error:', error);
     return Response.json(
-      { error: 'Failed to process request', details: error.message },
+      { error: 'Failed to process request', details: message },
       { status: 500 }
     );
   }

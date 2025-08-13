@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+/dist/
+ 
+# vendor repos
+vendor/ai-sdk-rag-starter/
+vendor/ai-sdk-preview-rag/
+llms.txt
+
+# content assets (not committed)
+public/bookchapters/
+
+# ignore sensitive/experimental scripts
+scripts/create-api-keys-and-index.js

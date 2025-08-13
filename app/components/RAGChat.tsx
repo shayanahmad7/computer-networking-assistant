@@ -1,33 +1,43 @@
 'use client'
 
 import React, { useRef, useEffect, useState } from 'react'
-import { Message, useAssistant } from 'ai/react'
-import { Send, Loader2, User, Bot, StopCircle } from 'lucide-react'
+import { Send, Loader2, User, Bot } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 
-interface ChatProps {
-  assistantId: string;
+// Message interface for type safety
+interface Message {
+  id: string;
+  content: string;
+  role: 'user' | 'assistant';
 }
 
-const Chat: React.FC<ChatProps> = ({ assistantId }) => {
-  const { status, messages: aiMessages, input, submitMessage, handleInputChange, stop } = useAssistant({ 
-    api: '/api/assistant',
-    body: {
-      assistantId: assistantId
-    }
-  })
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+/**
+ * RAGChat Component
+ * 
+ * A chat interface that connects to the RAG-powered backend for Chapter 1.
+ * Features:
+ * - Real-time chat with AI tutor
+ * - Markdown rendering with math support
+ * - Automatic scrolling
+ * - Loading states
+ * 
+ * SECURITY: No sensitive data is stored in client-side state
+ */
+export default function RAGChat() {
   const [messages, setMessages] = useState<Message[]>([])
-  const [isStreaming, setIsStreaming] = useState(false)
+  const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    // Add initial messages like the other tutors
     const initialMessages: Message[] = [
       {
         id: 'initial-1',
-        content: "Your conversation with this tutor is being recorded. Data collected will not be published but will be analyzed to enhance the user experience in the future.",
+        content: "Your conversation with this RAG-powered tutor is being recorded. Data collected will not be published but will be analyzed to enhance the user experience in the future.",
         role: 'assistant'
       },
       {
@@ -36,17 +46,59 @@ const Chat: React.FC<ChatProps> = ({ assistantId }) => {
         role: 'assistant'
       }
     ];
-
-    setMessages([...initialMessages, ...aiMessages]);
-  }, [aiMessages]);
+    setMessages(initialMessages);
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  useEffect(() => {
-    setIsStreaming(status === 'in_progress')
-  }, [status])
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      content: input.trim(),
+      role: 'user'
+    }
+
+    setMessages(prev => [...prev, userMessage])
+    setInput('')
+    setIsLoading(true)
+
+    try {
+      const response = await fetch('/api/rag-chapter1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [...messages, userMessage] }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      
+      const assistantMessage: Message = {
+        id: Date.now().toString() + '-assistant',
+        content: data.content || 'I apologize, but I could not generate a response.',
+        role: 'assistant'
+      }
+
+      setMessages(prev => [...prev, assistantMessage])
+    } catch (error) {
+      console.error('Chat error:', error)
+      const errorMessage: Message = {
+        id: Date.now().toString() + '-error',
+        content: 'I apologize, but there was an error processing your request. Please try again.',
+        role: 'assistant'
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const renderMessage = (content: string) => {
     return (
@@ -86,26 +138,10 @@ const Chat: React.FC<ChatProps> = ({ assistantId }) => {
     )
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (isStreaming) {
-      await stop()
-      setIsStreaming(false)
-    } else if (input.trim()) {
-      setIsStreaming(true)
-      try {
-        await submitMessage()
-      } catch (error) {
-        console.error('Error submitting message:', error)
-        setIsStreaming(false)
-      }
-    }
-  }
-
   return (
     <div className="flex h-[60vh] flex-col rounded-xl bg-gray-50 shadow-inner">
       <div className="flex-1 overflow-y-auto p-4">
-        {messages.map((m: Message) => (
+        {messages.map((m) => (
           <div key={m.id} className={`mb-4 flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
               className={`flex max-w-[80%] items-start rounded-2xl px-4 py-3 ${
@@ -124,12 +160,12 @@ const Chat: React.FC<ChatProps> = ({ assistantId }) => {
                   [&_.katex-display]:my-3 [&_.katex-display]:text-center
                 `}
               >
-                {renderMessage(m.content)}
+                {m.role === 'user' ? <>{m.content}</> : renderMessage(m.content)}
               </div>
             </div>
           </div>
         ))}
-        {isStreaming && (
+        {isLoading && (
           <div className="flex justify-start items-center mb-4">
             <div className="flex items-center rounded-full bg-white px-4 py-2 text-gray-800 shadow">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -140,49 +176,29 @@ const Chat: React.FC<ChatProps> = ({ assistantId }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="border-t border-gray-200 bg-white p-4"
-      >
+      <form onSubmit={handleSubmit} className="border-t border-gray-200 bg-white p-4">
         <div className="flex rounded-full bg-gray-100 shadow-inner">
           <input
             type="text"
             value={input}
-            onChange={handleInputChange}
+            onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about computer networking..."
-            disabled={isStreaming}
+            disabled={isLoading}
             className="flex-1 rounded-l-full bg-transparent px-6 py-3 focus:outline-none"
           />
           <button
             type="submit"
-            disabled={!input.trim() && !isStreaming}
+            disabled={!input.trim() || isLoading}
             className={`flex items-center rounded-r-full px-6 py-3 font-semibold text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 ${
-              isStreaming
-                ? 'bg-red-500 hover:bg-red-600'
-                : input.trim()
-                  ? 'bg-blue-500 hover:bg-blue-600'
-                  : 'bg-gray-400 cursor-not-allowed'
+              input.trim() && !isLoading ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-400 cursor-not-allowed'
             }`}
           >
-            {isStreaming ? (
-              <>
-                <StopCircle className="mr-2 h-5 w-5" />
-                <span className="sr-only">Stop generating</span>
-                <span aria-hidden="true">Stop</span>
-              </>
-            ) : (
-              <>
-                <Send className="mr-2 h-5 w-5" />
-                <span className="sr-only">Send message</span>
-                <span aria-hidden="true">Send</span>
-              </>
-            )}
+            <Send className="mr-2 h-5 w-5" />
+            <span className="sr-only">Send message</span>
+            <span aria-hidden="true">Send</span>
           </button>
         </div>
       </form>
     </div>
   )
 }
-
-export default Chat;
-

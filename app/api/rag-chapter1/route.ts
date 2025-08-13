@@ -145,7 +145,6 @@ Use this context as authoritative for wording and definitions.` : 'No specific C
 
     // Store chat memory embeddings for long-term retrieval
     try {
-      const { generateEmbeddings } = await import('@/lib/ai/embedding');
       const items = [
         { role: 'user' as const, content: userQuery },
         { role: 'assistant' as const, content: aiResponse }

@@ -55,7 +55,7 @@ export const findRelevantContent = async (userQuery: string, limit: number = 4) 
       let vectorResults: Array<{ content: string; resourceId?: string; score: number }> = [];
       try {
         console.log('[EMBEDDING] Using Atlas Vector Search (REAL vector search)');
-        vectorResults = await embeddings.aggregate([
+        vectorResults = await embeddings.aggregate<{ content: string; resourceId?: string; score: number }>([
           {
             $vectorSearch: {
               queryVector: userQueryEmbedded,

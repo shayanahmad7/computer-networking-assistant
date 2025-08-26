@@ -54,3 +54,4 @@ scripts/create-api-keys-and-index.js
 scripts/create-vector-index-final.js
 scripts/fast-batch-ingest.js
 scripts/create-chat-memory-backfill.js
+math1000a-tutors/

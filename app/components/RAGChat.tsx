@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useRef, useEffect, useState } from 'react'
-import { Send, Loader2, User, Bot } from 'lucide-react'
+import { Send, Loader2, User, Bot, Mic, MicOff, Volume2, VolumeX } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
@@ -33,6 +33,17 @@ export default function RAGChat() {
   const [threadId, setThreadId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  // Speech-to-text states
+  const [isRecording, setIsRecording] = useState(false)
+  const [isProcessingAudio, setIsProcessingAudio] = useState(false)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+
+  // Text-to-speech states
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [currentlySpeakingId, setIsCurrentlySpeakingId] = useState<string | null>(null)
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
+
   useEffect(() => {
     // Add initial messages like the other tutors
     const initialMessages: Message[] = [
@@ -53,6 +64,114 @@ export default function RAGChat() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Speech-to-text functionality
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+      
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data)
+        }
+      }
+      
+      mediaRecorder.onstop = async () => {
+        setIsProcessingAudio(true)
+        try {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+          
+          const response = await fetch('/api/speech-to-text', {
+            method: 'POST',
+            body: audioBlob
+          })
+          
+          if (response.ok) {
+            const data = await response.json()
+            if (data.success) {
+              setInput(data.text)
+            }
+          }
+        } catch (error) {
+          console.error('Error processing audio:', error)
+        } finally {
+          setIsProcessingAudio(false)
+        }
+        
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop())
+      }
+      
+      mediaRecorder.start()
+      setIsRecording(true)
+    } catch (error) {
+      console.error('Error starting recording:', error)
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+    }
+  }
+
+  const handleRecording = () => {
+    if (isRecording) {
+      stopRecording()
+    } else {
+      startRecording()
+    }
+  }
+
+  // Text-to-speech functionality
+  const speakText = async (text: string, messageId: string) => {
+    if (isSpeaking && currentlySpeakingId === messageId) {
+      // Stop current speech
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause()
+        currentAudioRef.current = null
+      }
+      setIsSpeaking(false)
+      setIsCurrentlySpeakingId(null)
+      return
+    }
+
+    try {
+      setIsSpeaking(true)
+      setIsCurrentlySpeakingId(messageId)
+
+      const response = await fetch('/api/text-to-speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: text, voice: 'nova' })
+      })
+
+      if (response.ok) {
+        const audioBlob = await response.blob()
+        const audioUrl = URL.createObjectURL(audioBlob)
+        const audio = new Audio(audioUrl)
+        
+        currentAudioRef.current = audio
+        
+        audio.onended = () => {
+          setIsSpeaking(false)
+          setIsCurrentlySpeakingId(null)
+          currentAudioRef.current = null
+        }
+        
+        audio.play()
+      }
+    } catch (error) {
+      console.error('Error with text-to-speech:', error)
+      setIsSpeaking(false)
+      setIsCurrentlySpeakingId(null)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -188,6 +307,25 @@ export default function RAGChat() {
               >
                 {m.role === 'user' ? <>{m.content}</> : renderMessage(m.content)}
               </div>
+              
+              {/* Text-to-speech button for assistant messages */}
+              {m.role === 'assistant' && (
+                <button
+                  onClick={() => speakText(m.content, m.id)}
+                  className={`ml-2 p-2 rounded-full transition-colors ${
+                    currentlySpeakingId === m.id
+                      ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  title={currentlySpeakingId === m.id ? 'Stop speaking' : 'Listen to this message'}
+                >
+                  {currentlySpeakingId === m.id ? (
+                    <VolumeX className="h-4 w-4" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -204,13 +342,37 @@ export default function RAGChat() {
 
       <form onSubmit={handleSubmit} className="border-t border-gray-200 bg-white p-4">
         <div className="flex rounded-full bg-gray-100 shadow-inner">
+          {/* Mic button for speech-to-text */}
+          <button
+            type="button"
+            onClick={handleRecording}
+            title={isRecording ? 'Stop recording' : 'Record your message'}
+            className={`p-3 rounded-l-full focus:outline-none transition-colors ${
+              isRecording
+                ? 'animate-pulse ring-2 ring-red-500 bg-red-100 text-red-600'
+                : isProcessingAudio
+                ? 'bg-yellow-100 text-yellow-600 cursor-wait'
+                : 'bg-gray-200 hover:bg-gray-300 text-gray-600'
+            }`}
+            disabled={isProcessingAudio || isLoading}
+          >
+            {isProcessingAudio ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : isRecording ? (
+              <Mic className="h-5 w-5" />
+            ) : (
+              <MicOff className="h-5 w-5" />
+            )}
+          </button>
+
+          {/* Text input field */}
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about computer networking..."
             disabled={isLoading}
-            className="flex-1 rounded-l-full bg-transparent px-6 py-3 focus:outline-none"
+            className="flex-1 bg-transparent px-6 py-3 focus:outline-none"
           />
           <button
             type="submit"

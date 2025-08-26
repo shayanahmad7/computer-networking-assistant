@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-// Define valid voice options as a TypeScript union type
+// Define valid voice options as a TypeScript union type - all supported OpenAI TTS voices
 type VoiceOption = 'alloy' | 'ash' | 'coral' | 'echo' | 'fable' | 'onyx' | 'nova' | 'sage' | 'shimmer'
 
 // Initialize OpenAI client

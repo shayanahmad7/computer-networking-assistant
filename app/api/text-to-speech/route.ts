@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-// Define valid voice options as a TypeScript union type - all supported OpenAI TTS voices
-type VoiceOption = 'alloy' | 'ash' | 'coral' | 'echo' | 'fable' | 'onyx' | 'nova' | 'sage' | 'shimmer'
+// Define valid voice options as a TypeScript union type - restricted to OpenAI client supported voices
+type VoiceOption = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer'
 
 // Initialize OpenAI client
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     const { model = 'tts-1', voice = 'alloy', input }: { model: string; voice: VoiceOption; input: string } = await req.json()
 
     // Validate the voice parameter
-    const validVoices: VoiceOption[] = ['alloy', 'ash', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer']
+    const validVoices: VoiceOption[] = ['alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer']
     if (!validVoices.includes(voice)) {
       return NextResponse.json({ error: 'Invalid voice option' }, { status: 400 })
     }

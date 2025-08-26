@@ -87,13 +87,20 @@ const Chat: React.FC<ChatProps> = ({ assistantId }) => {
           if (response.ok) {
             const data = await response.json()
             if (data.success) {
-              // Update the input field with transcribed text
-              const inputElement = document.querySelector('input[type="text"]') as HTMLInputElement
-              if (inputElement) {
-                inputElement.value = data.text
-                // Trigger the change event to update the input state
-                const event = new Event('input', { bubbles: true })
-                inputElement.dispatchEvent(event)
+              // For the AI SDK, we need to manually update the input field
+              // and then trigger the change handler that the AI SDK provides
+              if (data.text) {
+                const inputElement = document.querySelector('input[type="text"]') as HTMLInputElement
+                if (inputElement) {
+                  // Update the input value
+                  inputElement.value = data.text
+                  // Trigger the AI SDK's change handler by calling handleInputChange
+                  // We need to create a synthetic event that matches what the AI SDK expects
+                  const syntheticEvent = {
+                    target: { value: data.text }
+                  } as React.ChangeEvent<HTMLInputElement>
+                  handleInputChange(syntheticEvent)
+                }
               }
             }
           }

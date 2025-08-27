@@ -15,35 +15,35 @@ export default function Home() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Link href="/chapter1" className="block rounded-xl border border-gray-200 p-4 hover:shadow-md transition bg-gray-50">
-            <h2 className="text-lg font-semibold">Chapter 1 Tutor</h2>
+            <h2 className="text-lg font-semibold">Chapter 1: Computer Networks and the Internet</h2>
             <p className="text-sm text-gray-600">Core concepts and problems for Chapter 1.</p>
           </Link>
           <Link href="/chapter2" className="block rounded-xl border border-gray-200 p-4 hover:shadow-md transition bg-gray-50">
-            <h2 className="text-lg font-semibold">Chapter 2 Tutor</h2>
+            <h2 className="text-lg font-semibold">Chapter 2: Application Layer</h2>
             <p className="text-sm text-gray-600">Use the standard chapter tutor.</p>
           </Link>
           <Link href="/chapter3" className="block rounded-xl border border-gray-200 p-4 hover:shadow-md transition bg-gray-50">
-            <h2 className="text-lg font-semibold">Chapter 3 Tutor</h2>
+            <h2 className="text-lg font-semibold">Chapter 3: Transport Layer</h2>
             <p className="text-sm text-gray-600">Use the standard chapter tutor.</p>
           </Link>
           <Link href="/chapter4" className="block rounded-xl border border-gray-200 p-4 hover:shadow-md transition bg-gray-50">
-            <h2 className="text-lg font-semibold">Chapter 4 Tutor</h2>
+            <h2 className="text-lg font-semibold">Chapter 4: The Network Layer: Data Plane</h2>
             <p className="text-sm text-gray-600">Use the standard chapter tutor.</p>
           </Link>
           <Link href="/chapter5" className="block rounded-xl border border-gray-200 p-4 hover:shadow-md transition bg-gray-50">
-            <h2 className="text-lg font-semibold">Chapter 5 Tutor</h2>
+            <h2 className="text-lg font-semibold">Chapter 5: The Network Layer: Control Plane</h2>
             <p className="text-sm text-gray-600">Use the standard chapter tutor.</p>
           </Link>
           <Link href="/chapter6" className="block rounded-xl border border-gray-200 p-4 hover:shadow-md transition bg-gray-50">
-            <h2 className="text-lg font-semibold">Chapter 6 Tutor</h2>
+            <h2 className="text-lg font-semibold">Chapter 6: The Link Layer and LANs</h2>
             <p className="text-sm text-gray-600">Use the standard chapter tutor.</p>
           </Link>
           <Link href="/chapter7" className="block rounded-xl border border-gray-200 p-4 hover:shadow-md transition bg-gray-50">
-            <h2 className="text-lg font-semibold">Chapter 7 Tutor</h2>
+            <h2 className="text-lg font-semibold">Chapter 7: Wireless and Mobile Networks</h2>
             <p className="text-sm text-gray-600">Use the standard chapter tutor.</p>
           </Link>
           <Link href="/chapter8" className="block rounded-xl border border-gray-200 p-4 hover:shadow-md transition bg-gray-50">
-            <h2 className="text-lg font-semibold">Chapter 8 Tutor</h2>
+            <h2 className="text-lg font-semibold">Chapter 8: Security in Computer Networks</h2>
             <p className="text-sm text-gray-600">Use the standard chapter tutor.</p>
           </Link>
         </div>
@@ -53,6 +53,8 @@ export default function Home() {
           <p className="text-sm text-gray-700 mb-3">Our bespoke Retrieval-Augmented Generation tutor built for Chapter 1 with MongoDB Atlas Vector Search.</p>
           <Link href="/rag-chapter1" className="inline-block rounded-full bg-blue-600 px-5 py-2 text-white hover:bg-blue-700 transition">Open RAG Tutor</Link>
         </div>
+
+
       </div>
     </main>
   )

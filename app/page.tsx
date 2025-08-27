@@ -50,7 +50,7 @@ export default function Home() {
 
         <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
           <h3 className="text-lg font-semibold">Custom RAG Tutor (Chapter 1)</h3>
-          <p className="text-sm text-gray-700 mb-3">Our bespoke Retrieval-Augmented Generation tutor built for Chapter 1 with MongoDB Atlas Vector Search.</p>
+          <p className="text-sm text-gray-700 mb-3">Our Retrieval-Augmented Generation tutor built for Chapter 1 with MongoDB Atlas Vector Search.</p>
           <Link href="/rag-chapter1" className="inline-block rounded-full bg-blue-600 px-5 py-2 text-white hover:bg-blue-700 transition">Open RAG Tutor</Link>
         </div>
 

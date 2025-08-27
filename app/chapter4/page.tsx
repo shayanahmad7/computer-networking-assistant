@@ -1,5 +1,6 @@
 import Chat from '../components/Chat'
 import ChapterHeader from '../components/ChapterHeader'
+import BottomNavigation from '../components/BottomNavigation'
 
 export default function Chapter4() {
   return (
@@ -8,6 +9,7 @@ export default function Chapter4() {
         <ChapterHeader chapterNumber={4} chapterTitle="The Network Layer: Data Plane" />
         <Chat assistantId={process.env.ASSISTANT4_ID || ''} />
       </div>
+      <BottomNavigation chapterNumber={4} />
     </main>
   )
 } 

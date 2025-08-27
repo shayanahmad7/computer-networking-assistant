@@ -7,27 +7,25 @@ interface BottomNavigationProps {
 
 const BottomNavigation = ({ chapterNumber, isRAG = false }: BottomNavigationProps) => {
   const getPrevChapter = () => {
-    if (isRAG) return null; // RAG chapter doesn't have previous
+    if (isRAG) return 8; // RAG chapter comes after Chapter 8
     return chapterNumber > 1 ? chapterNumber - 1 : null;
   };
   
   const getNextChapter = () => {
-    if (isRAG) return 2; // RAG chapter goes to Chapter 2
-    if (chapterNumber === 1) return 'rag'; // Chapter 1 goes to RAG
+    if (isRAG) return null; // RAG chapter is the last one
+    if (chapterNumber === 8) return 'rag'; // Chapter 8 goes to RAG
     return chapterNumber < 8 ? chapterNumber + 1 : null;
   };
 
   const getNextChapterLink = () => {
     const next = getNextChapter();
     if (next === 'rag') return '/rag-chapter1';
-    if (next === 2 && isRAG) return '/chapter2';
     return next ? `/chapter${next}` : null;
   };
 
   const getNextChapterText = () => {
     const next = getNextChapter();
     if (next === 'rag') return 'RAG Tutor →';
-    if (next === 2 && isRAG) return 'Chapter 2 →';
     return next ? `Chapter ${next} →` : null;
   };
 

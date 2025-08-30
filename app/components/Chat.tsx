@@ -10,13 +10,15 @@ import 'katex/dist/katex.min.css'
 
 interface ChatProps {
   assistantId: string;
+  userId?: string; // Optional user ID for tracking
 }
 
-const Chat: React.FC<ChatProps> = ({ assistantId }) => {
-  const { status, messages: aiMessages, input, submitMessage, handleInputChange, stop } = useAssistant({ 
+const Chat: React.FC<ChatProps> = ({ assistantId, userId }) => {
+  const { status, messages: aiMessages, input, submitMessage, handleInputChange, stop } = useAssistant({
     api: '/api/assistant',
     body: {
-      assistantId: assistantId
+      assistantId: assistantId,
+      userId: userId || 'anonymous' // Default to anonymous if no userId provided
     }
   })
   const messagesEndRef = useRef<HTMLDivElement>(null)

@@ -4,10 +4,7 @@ import { MongoClient } from 'mongodb';
 const uri = process.env.MONGODB_URI as string;
 const ADMIN_PASSWORD = 'Professor6097';
 
-// Helper function to distribute chats across chapters
-function distributeToChapter(index: number, totalChapters: number = 8): string {
-  return (index % totalChapters + 1).toString();
-}
+
 
 interface ChatThread {
   _id?: string;
@@ -78,7 +75,7 @@ export async function GET(request: NextRequest) {
 
         allChapterChats.push(...chats);
       } catch (error) {
-        console.log(`Collection ${collectionName} not found or error:`, error.message);
+        console.log(`Collection ${collectionName} not found or error:`, error instanceof Error ? error.message : String(error));
       }
     }
 
@@ -157,7 +154,7 @@ export async function GET(request: NextRequest) {
         lastMessage: messages[messages.length - 1]?.content ?
           (messages[messages.length - 1].content.substring(0, 100) + (messages[messages.length - 1].content.length > 100 ? '...' : '')) :
           'No messages',
-        messages: messages.map(msg => ({
+        messages: messages.map((msg: { role: string; content?: string; timestamp?: Date; userId?: string }) => ({
           role: msg.role,
           content: msg.content || '',
           timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString(),

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Eye, EyeOff, Lock, MessageSquare, Calendar, User, Bot, ChevronDown, ChevronRight, Volume2, VolumeX } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
@@ -57,7 +57,7 @@ const AdminChatsPage: React.FC = () => {
       } else {
         setError('Invalid password')
       }
-    } catch (err) {
+    } catch {
       setError('Connection failed. Please try again.')
     } finally {
       setLoading(false)

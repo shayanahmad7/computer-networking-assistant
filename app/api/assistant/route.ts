@@ -1,19 +1,20 @@
 import { AssistantResponse } from 'ai';
 import OpenAI from 'openai';
-import { MongoClient, Db, Collection } from 'mongodb';
+import { MongoClient, Db } from 'mongodb';
 
-// Define the structure of a message
-interface Message {
+
+
+interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  userId?: string;
+  assistantId?: string;
 }
 
-// Define the structure of the collection document
-interface Thread {
-  threadId: string;
-  messages: Message[];
-}
+
+
+
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
@@ -22,7 +23,6 @@ const openai = new OpenAI({
 const uri = process.env.MONGODB_URI || ''; // MongoDB connection string
 const client = new MongoClient(uri);
 let db: Db | null = null;
-let collection: Collection<Thread> | null = null;
 
 // Ensure MongoDB connection
 async function connectToDatabase() {
@@ -34,18 +34,6 @@ async function connectToDatabase() {
 
 // Get collection name based on assistant ID
 function getCollectionName(assistantId: string): string {
-  // Map assistant IDs to chapter collections
-  const assistantMapping: { [key: string]: string } = {
-    'asst_1': 'chapter1_messages',
-    'asst_2': 'chapter2_messages',
-    'asst_3': 'chapter3_messages',
-    'asst_4': 'chapter4_messages',
-    'asst_5': 'chapter5_messages',
-    'asst_6': 'chapter6_messages',
-    'asst_7': 'chapter7_messages',
-    'asst_8': 'chapter8_messages',
-  };
-
   // Try to find by environment variable name pattern
   for (const [envKey, collectionName] of Object.entries({
     'ASSISTANT1_ID': 'chapter1_messages',
@@ -100,7 +88,7 @@ async function saveMessageToDatabase(threadId: string, role: 'user' | 'assistant
   const collectionName = assistantId ? getCollectionName(assistantId) : 'messages';
   const collection = db!.collection(collectionName);
 
-  const message: any = {
+  const message: ChatMessage = {
     role,
     content,
     timestamp: new Date(),
@@ -121,6 +109,7 @@ async function saveMessageToDatabase(threadId: string, role: 'user' | 'assistant
           ...(assistantId && { assistantId })
         },
         $push: { messages: message },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any,
       { upsert: true }
     );

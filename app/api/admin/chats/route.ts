@@ -119,11 +119,13 @@ export async function GET(request: NextRequest) {
         lastMessage: chat.messages?.[chat.messages.length - 1]?.content ?
           (chat.messages[chat.messages.length - 1].content.substring(0, 100) + (chat.messages[chat.messages.length - 1].content.length > 100 ? '...' : '')) :
           'No messages',
-        messages: (chat.messages || []).map(msg => ({
-          role: msg.role,
-          content: msg.content || '',
-          timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString()
-        }))
+        messages: (chat.messages || [])
+          .sort((a: { timestamp: Date }, b: { timestamp: Date }) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+          .map(msg => ({
+            role: msg.role,
+            content: msg.content || '',
+            timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString()
+          }))
       };
     });
 
@@ -154,12 +156,14 @@ export async function GET(request: NextRequest) {
         lastMessage: messages[messages.length - 1]?.content ?
           (messages[messages.length - 1].content.substring(0, 100) + (messages[messages.length - 1].content.length > 100 ? '...' : '')) :
           'No messages',
-        messages: messages.map((msg: { role: string; content?: string; timestamp?: Date; userId?: string }) => ({
-          role: msg.role,
-          content: msg.content || '',
-          timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString(),
-          userId: msg.userId || chat.userId
-        }))
+        messages: messages
+          .sort((a: { timestamp?: Date }, b: { timestamp?: Date }) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime())
+          .map((msg: { role: string; content?: string; timestamp?: Date; userId?: string }) => ({
+            role: msg.role,
+            content: msg.content || '',
+            timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString(),
+            userId: msg.userId || chat.userId
+          }))
       };
     });
 

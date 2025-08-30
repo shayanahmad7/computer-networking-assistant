@@ -7,6 +7,47 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 
+// KaTeX trust context interface
+interface KatexTrustContext {
+  command: string;
+}
+
+// Enhanced KaTeX configuration for complex mathematical expressions
+const katexOptions = {
+  throwOnError: false,
+  errorColor: '#cc0000',
+  displayMode: false,
+  fleqn: false,
+  macros: {
+    "\\RR": "\\mathbb{R}",
+    "\\NN": "\\mathbb{N}",
+    "\\ZZ": "\\mathbb{Z}",
+    "\\QQ": "\\mathbb{Q}",
+    "\\CC": "\\mathbb{C}",
+    "\\FF": "\\mathbb{F}",
+    "\\PP": "\\mathbb{P}",
+    "\\EE": "\\mathbb{E}",
+    "\\dd": "\\mathrm{d}",
+    "\\ee": "\\mathrm{e}",
+    "\\ii": "\\mathrm{i}",
+    "\\oo": "\\infty",
+    "\\eps": "\\varepsilon",
+    "\\RRR": "\\mathrm{R}",
+    "\\NNN": "\\mathrm{N}",
+    "\\ZZZ": "\\mathrm{Z}",
+    "\\PPP": "\\mathrm{P}",
+    "\\dprop": "d_{\\text{prop}}",
+    "\\dtrans": "d_{\\text{trans}}",
+    "\\dendtoend": "d_{\\text{end-to-end}}",
+  },
+  trust: (context: KatexTrustContext) => ['\\htmlId', '\\href'].includes(context.command),
+  strict: false,
+  output: 'html',
+  minRuleThickness: 0.05,
+  maxSize: Infinity,
+  maxExpand: 1000,
+} as const
+
 // Message interface for type safety
 interface Message {
   id: string;
@@ -221,35 +262,42 @@ export default function RAGChat() {
     }
   }
 
-  const renderMessage = (content: string) => {
-    const normalizeMath = (text: string) => {
-      let t = text;
-      t = t.replace(/\\\[([\s\S]*?)\\\]/g, (_m, expr) => `$$${expr}$$`);
-      t = t.replace(/\\\(([^\)]*?)\\\)/g, (_m, expr) => `$${expr}$`);
-      t = t.replace(/(^|\n)\s*\[\s*([^\]]+?)\s*\](?=\s*($|\n))/g, (_m, p1, expr) => `${p1}$$${expr}$$`);
-      return t;
-    };
-    const normalizeLists = (text: string) => {
-      const lines = text.split(/\n/);
-      const out: string[] = [];
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const subpart = /^\s*(?:\(([a-zA-Z0-9]+)\)|([a-zA-Z0-9]+)[\.)])\s+/.exec(line);
-        if (subpart) {
-          if (!/^\s*[-*+]\s+/.test(line) && !/^\s*\d+\./.test(line)) {
-            out.push(line.replace(/^\s*/, '- '));
-            continue;
-          }
+  // Function to preprocess LaTeX expressions from AI responses
+  const preprocessLatex = (text: string): string => {
+    return text
+      // Convert (expression) to $expression$ for inline math
+      .replace(/\(([^)]*?)\)/g, (match, expr) => {
+        // Only convert if it contains LaTeX-like content (contains \, _, ^, or common math symbols)
+        if (expr.match(/[\\_\^\+\-\*\/\=\<\>]/) && !expr.includes('$')) {
+          return `$${expr}$`;
         }
-        out.push(line);
-      }
-      return out.join('\n');
-    };
-    const prettify = (text: string) => normalizeLists(normalizeMath(text));
+        return match;
+      })
+      // Convert [expression] to $$expression$$ for display math
+      .replace(/\[([^\]]*?)\]/g, (match, expr) => {
+        // Only convert if it contains LaTeX-like content
+        if (expr.match(/[\\_\^\+\-\*\/\=\<\>]/) && !expr.includes('$')) {
+          return `$$${expr}$$`;
+        }
+        return match;
+      })
+      // Convert ((expression)) to $(expression)$ for inline math with double parens
+      .replace(/\(\(([^)]*?)\)\)/g, (match, expr) => {
+        if (expr.match(/[\\_\^\+\-\*\/\=\<\>]/) && !expr.includes('$')) {
+          return `$${expr}$`;
+        }
+        return match;
+      });
+  };
+
+  const renderMessage = (content: string) => {
+    // Preprocess the content to handle AI's LaTeX format
+    const processedContent = preprocessLatex(content);
+
     return (
       <ReactMarkdown
         remarkPlugins={[remarkMath]}
-        rehypePlugins={[rehypeKatex]}
+        rehypePlugins={[[rehypeKatex, katexOptions]]}
         className="prose prose-sm dark:prose-invert max-w-none"
         components={{
           h1: ({ ...props }) => (
@@ -275,10 +323,33 @@ export default function RAGChat() {
           ),
           blockquote: ({ ...props }) => (
             <blockquote className="border-l-4 border-gray-300 pl-4 my-2" {...props} />
-          )
+          ),
+          // Enhanced math rendering with error handling
+          div: ({ className, ...props }) => {
+            if (className && className.includes('math-display')) {
+              return (
+                <div
+                  className={`${className} my-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border overflow-x-auto`}
+                  {...props}
+                />
+              )
+            }
+            return <div className={className} {...props} />
+          },
+          span: ({ className, ...props }) => {
+            if (className && className.includes('math-inline')) {
+              return (
+                <span
+                  className={`${className} mx-1`}
+                  {...props}
+                />
+              )
+            }
+            return <span className={className} {...props} />
+          }
         }}
       >
-        {prettify(content)}
+        {processedContent}
       </ReactMarkdown>
     )
   }

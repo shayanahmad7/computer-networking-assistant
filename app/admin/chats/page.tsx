@@ -7,6 +7,11 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 
+// KaTeX trust context interface
+interface KatexTrustContext {
+  command: string;
+}
+
 // Enhanced KaTeX configuration for complex mathematical expressions
 const katexOptions = {
   throwOnError: false,
@@ -35,7 +40,7 @@ const katexOptions = {
     "\\dtrans": "d_{\\text{trans}}",
     "\\dendtoend": "d_{\\text{end-to-end}}",
   },
-  trust: (context: any) => ['\\htmlId', '\\href'].includes(context.command),
+  trust: (context: KatexTrustContext) => ['\\htmlId', '\\href'].includes(context.command),
   strict: false,
   output: 'html',
   minRuleThickness: 0.05,

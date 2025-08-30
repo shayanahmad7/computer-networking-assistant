@@ -7,6 +7,42 @@ import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
 
+// Enhanced KaTeX configuration for complex mathematical expressions
+const katexOptions = {
+  throwOnError: false,
+  errorColor: '#cc0000',
+  displayMode: false,
+  fleqn: false,
+  macros: {
+    "\\RR": "\\mathbb{R}",
+    "\\NN": "\\mathbb{N}",
+    "\\ZZ": "\\mathbb{Z}",
+    "\\QQ": "\\mathbb{Q}",
+    "\\CC": "\\mathbb{C}",
+    "\\FF": "\\mathbb{F}",
+    "\\PP": "\\mathbb{P}",
+    "\\EE": "\\mathbb{E}",
+    "\\dd": "\\mathrm{d}",
+    "\\ee": "\\mathrm{e}",
+    "\\ii": "\\mathrm{i}",
+    "\\oo": "\\infty",
+    "\\eps": "\\varepsilon",
+    "\\RRR": "\\mathrm{R}",
+    "\\NNN": "\\mathrm{N}",
+    "\\ZZZ": "\\mathrm{Z}",
+    "\\PPP": "\\mathrm{P}",
+    "\\dprop": "d_{\\text{prop}}",
+    "\\dtrans": "d_{\\text{trans}}",
+    "\\dendtoend": "d_{\\text{end-to-end}}",
+  },
+  trust: (context: any) => ['\\htmlId', '\\href'].includes(context.command),
+  strict: false,
+  output: 'html',
+  minRuleThickness: 0.05,
+  maxSize: Infinity,
+  maxExpand: 1000,
+} as const
+
 interface ChatThread {
   id: string;
   sessionId: string;
@@ -158,7 +194,7 @@ const AdminChatsPage: React.FC = () => {
     return (
       <ReactMarkdown
         remarkPlugins={[remarkMath]}
-        rehypePlugins={[rehypeKatex]}
+        rehypePlugins={[[rehypeKatex, katexOptions]]}
         className="prose prose-sm dark:prose-invert max-w-none"
         components={{
           h1: ({ ...props }) => (
@@ -184,7 +220,30 @@ const AdminChatsPage: React.FC = () => {
           ),
           blockquote: ({ ...props }) => (
             <blockquote className="border-l-4 border-gray-300 pl-4 my-2" {...props} />
-          )
+          ),
+          // Enhanced math rendering with error handling
+          div: ({ className, ...props }) => {
+            if (className && className.includes('math-display')) {
+              return (
+                <div
+                  className={`${className} my-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border overflow-x-auto`}
+                  {...props}
+                />
+              )
+            }
+            return <div className={className} {...props} />
+          },
+          span: ({ className, ...props }) => {
+            if (className && className.includes('math-inline')) {
+              return (
+                <span
+                  className={`${className} mx-1`}
+                  {...props}
+                />
+              )
+            }
+            return <span className={className} {...props} />
+          }
         }}
       >
         {content}

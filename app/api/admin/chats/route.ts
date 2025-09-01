@@ -212,30 +212,68 @@ export async function DELETE(request: NextRequest) {
     const client = new MongoClient(uri);
     await client.connect();
     const db = client.db('computer_networking_assistant');
+    const { ObjectId } = require('mongodb');
 
     let deleteResult;
     let targetCollection = 'unknown';
 
     // Try different deletion strategies based on collection type
     if (collectionName && collectionName !== 'messages') {
-      // Delete from chapter-specific collection (e.g., chapter1_messages)
+      // Delete from chapter-specific collection (e.g., chapter1_messages, chapter2_messages)
       targetCollection = collectionName;
       const collection = db.collection(collectionName);
 
-      // Try deleting by _id first
-      deleteResult = await collection.deleteOne({ _id: chatId });
-      console.log(`[DELETE] Tried deleting by _id from ${collectionName}:`, deleteResult.deletedCount);
+      if (collectionName.startsWith('chapter') && collectionName.endsWith('_messages')) {
+        // For chapter collections, the chatId is the MongoDB _id (ObjectId)
+        try {
+          if (ObjectId.isValid(chatId)) {
+            deleteResult = await collection.deleteOne({ _id: new ObjectId(chatId) });
+            console.log(`[DELETE] Tried deleting by ObjectId from ${collectionName}:`, deleteResult.deletedCount);
+          } else {
+            console.log(`[DELETE] Invalid ObjectId format: ${chatId}`);
+            deleteResult = { deletedCount: 0 };
+          }
+        } catch (e) {
+          console.log(`[DELETE] ObjectId conversion failed for ${chatId}:`, e);
+          deleteResult = { deletedCount: 0 };
+        }
+      } else if (collectionName === 'chat_threads') {
+        // For RAG collection, the chatId is also the MongoDB _id (ObjectId)
+        try {
+          if (ObjectId.isValid(chatId)) {
+            deleteResult = await collection.deleteOne({ _id: new ObjectId(chatId) });
+            console.log(`[DELETE] Tried deleting by ObjectId from ${collectionName}:`, deleteResult.deletedCount);
+          } else {
+            console.log(`[DELETE] Invalid ObjectId format: ${chatId}`);
+            deleteResult = { deletedCount: 0 };
+          }
+        } catch (e) {
+          console.log(`[DELETE] ObjectId conversion failed for ${chatId}:`, e);
+          deleteResult = { deletedCount: 0 };
+        }
+      } else {
+        // Generic approach for other collections - try as ObjectId first
+        try {
+          if (ObjectId.isValid(chatId)) {
+            deleteResult = await collection.deleteOne({ _id: new ObjectId(chatId) });
+            console.log(`[DELETE] Tried deleting by ObjectId from ${collectionName}:`, deleteResult.deletedCount);
+          } else {
+            deleteResult = { deletedCount: 0 };
+          }
+        } catch (e) {
+          deleteResult = { deletedCount: 0 };
+        }
 
-      // If not found by _id, try by threadId
-      if (deleteResult.deletedCount === 0) {
-        deleteResult = await collection.deleteOne({ threadId: chatId });
-        console.log(`[DELETE] Tried deleting by threadId from ${collectionName}:`, deleteResult.deletedCount);
-      }
+        // If ObjectId didn't work, try other fields
+        if (deleteResult.deletedCount === 0) {
+          deleteResult = await collection.deleteOne({ threadId: chatId });
+          console.log(`[DELETE] Tried deleting by threadId from ${collectionName}:`, deleteResult.deletedCount);
+        }
 
-      // If still not found, try by sessionId
-      if (deleteResult.deletedCount === 0) {
-        deleteResult = await collection.deleteOne({ sessionId: chatId });
-        console.log(`[DELETE] Tried deleting by sessionId from ${collectionName}:`, deleteResult.deletedCount);
+        if (deleteResult.deletedCount === 0) {
+          deleteResult = await collection.deleteOne({ sessionId: chatId });
+          console.log(`[DELETE] Tried deleting by sessionId from ${collectionName}:`, deleteResult.deletedCount);
+        }
       }
 
     } else {
@@ -246,15 +284,17 @@ export async function DELETE(request: NextRequest) {
         targetCollection = collName;
         const collection = db.collection(collName);
 
-        // Try deleting by _id
-        deleteResult = await collection.deleteOne({ _id: chatId });
-        console.log(`[DELETE] Tried deleting by _id from ${collName}:`, deleteResult.deletedCount);
-
-        if (deleteResult.deletedCount > 0) break;
-
-        // Try by sessionId
-        deleteResult = await collection.deleteOne({ sessionId: chatId });
-        console.log(`[DELETE] Tried deleting by sessionId from ${collName}:`, deleteResult.deletedCount);
+        // Always try ObjectId first since that's what the frontend passes
+        try {
+          if (ObjectId.isValid(chatId)) {
+            deleteResult = await collection.deleteOne({ _id: new ObjectId(chatId) });
+            console.log(`[DELETE] Tried deleting by ObjectId from ${collName}:`, deleteResult.deletedCount);
+          } else {
+            deleteResult = { deletedCount: 0 };
+          }
+        } catch (e) {
+          deleteResult = { deletedCount: 0 };
+        }
 
         if (deleteResult.deletedCount > 0) break;
       }

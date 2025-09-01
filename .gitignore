@@ -54,4 +54,21 @@ scripts/create-api-keys-and-index.js
 scripts/create-vector-index-final.js
 scripts/fast-batch-ingest.js
 scripts/create-chat-memory-backfill.js
+scripts/convert-pdfs-to-markdown.js
+scripts/test-chapter-assistants.js
 math1000a-tutors/
+
+# markdown chapters folder (for testing purposes)
+markdown-chapters/
+
+# test results and scripts
+assistant-test-results.json
+sample-env.txt
+scripts/test-chapter-assistants.js
+scripts/test-chapter-4.js
+scripts/debug-api.js
+scripts/check-test-results.js
+
+# additional test files
+test-results-analysis.txt
+ENVIRONMENT_VARIABLES.md

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { MongoClient } from 'mongodb';
 
 const uri = process.env.MONGODB_URI as string;
-const ADMIN_PASSWORD = 'Professor6097';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD as string;
 
 
 
@@ -177,6 +177,72 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching admin chats:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE endpoint for deleting individual chats
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { chatId, collectionName, password } = body;
+
+    // Verify admin password
+    if (!password || password !== ADMIN_PASSWORD) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    if (!chatId) {
+      return NextResponse.json(
+        { error: 'chatId is required' },
+        { status: 400 }
+      );
+    }
+
+    const client = new MongoClient(uri);
+    await client.connect();
+    const db = client.db('computer_networking_assistant');
+
+    let deleteResult;
+
+    if (collectionName && collectionName !== 'messages') {
+      // Delete from chapter-specific collection
+      const collection = db.collection(collectionName);
+      deleteResult = await collection.deleteOne({ _id: chatId });
+    } else {
+      // Try to delete from chat_threads collection (for RAG chats)
+      const chatThreadsCollection = db.collection('chat_threads');
+      deleteResult = await chatThreadsCollection.deleteOne({ _id: chatId });
+
+      // If not found in chat_threads, try the legacy messages collection
+      if (deleteResult.deletedCount === 0) {
+        const messagesCollection = db.collection('messages');
+        deleteResult = await messagesCollection.deleteOne({ _id: chatId });
+      }
+    }
+
+    await client.close();
+
+    if (deleteResult.deletedCount > 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'Chat deleted successfully'
+      });
+    } else {
+      return NextResponse.json(
+        { error: 'Chat not found' },
+        { status: 404 }
+      );
+    }
+
+  } catch (error) {
+    console.error('Error deleting chat:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

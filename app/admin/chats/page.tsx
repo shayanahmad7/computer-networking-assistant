@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Eye, EyeOff, Lock, MessageSquare, Calendar, User, Bot, ChevronDown, ChevronRight, Volume2, VolumeX } from 'lucide-react'
+import { Eye, EyeOff, Lock, MessageSquare, Calendar, User, Bot, ChevronDown, ChevronRight, Volume2, VolumeX, RefreshCw, Home, Trash2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
@@ -80,6 +80,7 @@ const AdminChatsPage: React.FC = () => {
   const [expandedAssistants, setExpandedAssistants] = useState<Set<string>>(new Set())
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [currentlySpeakingId, setCurrentlySpeakingId] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
 
   const handleAuthentication = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -103,6 +104,70 @@ const AdminChatsPage: React.FC = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Refresh chat history without page reload
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try {
+      const response = await fetch(`/api/admin/chats?password=${encodeURIComponent(password)}`)
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        setChats(data.chats)
+        setSelectedChat(null) // Clear selected chat when refreshing
+      } else {
+        setError('Failed to refresh chats')
+      }
+    } catch {
+      setError('Connection failed during refresh.')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  // Delete individual chat
+  const handleDeleteChat = async (chatId: string, collectionName?: string) => {
+    if (!confirm('Are you sure you want to delete this chat? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const deletePayload = {
+        chatId,
+        collectionName,
+        password // Include password for authentication
+      }
+
+      const response = await fetch('/api/admin/chats', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(deletePayload)
+      })
+
+      if (response.ok) {
+        // Remove chat from local state
+        setChats(prevChats => prevChats.filter(chat => chat.id !== chatId))
+
+        // Clear selected chat if it was the deleted one
+        if (selectedChat?.id === chatId) {
+          setSelectedChat(null)
+        }
+
+        alert('Chat deleted successfully')
+      } else {
+        const errorData = await response.json()
+        alert(`Failed to delete chat: ${errorData.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error deleting chat:', error)
+      alert('Failed to delete chat. Please try again.')
+    }
+  }
+
+  // Navigate back to home
+  const handleGoHome = () => {
+    window.location.href = '/'
   }
 
   const formatDate = (dateString: string) => {
@@ -353,9 +418,31 @@ const AdminChatsPage: React.FC = () => {
           {/* Left Sidebar - Chat List */}
           <div className="w-1/3 border-r border-gray-200 flex flex-col">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">Chat History</h2>
-              <p className="text-gray-600 text-sm mt-1">{chats.length} conversations total</p>
-
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Chat History</h2>
+                  <p className="text-gray-600 text-sm mt-1">{chats.length} conversations total</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-lg transition-colors"
+                    title="Refresh chat history"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    {refreshing ? 'Refreshing...' : 'Refresh'}
+                  </button>
+                  <button
+                    onClick={handleGoHome}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                    title="Go back to home page"
+                  >
+                    <Home className="h-4 w-4" />
+                    Home
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto">
@@ -420,8 +507,20 @@ const AdminChatsPage: React.FC = () => {
                                 </div>
                               )}
                             </div>
-                            <div className="text-xs text-gray-500">
-                              {chat.messageCount} msgs
+                            <div className="flex items-center gap-2">
+                              <div className="text-xs text-gray-500">
+                                {chat.messageCount} msgs
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteChat(chat.id, chat.collectionName)
+                                }}
+                                className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                title="Delete this chat"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
                             </div>
                           </div>
 

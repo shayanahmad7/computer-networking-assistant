@@ -268,7 +268,7 @@ export default function RAGChat() {
     // Let markdown renderer handle everything automatically
     return (
       <ReactMarkdown
-        remarkPlugins={[remarkMath]}
+        remarkPlugins={[[remarkMath, { singleDollarTextMath: false }]]}
         rehypePlugins={[[rehypeKatex, katexOptions]]}
         className="prose prose-sm dark:prose-invert max-w-none"
         components={{

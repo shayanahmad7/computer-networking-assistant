@@ -3,50 +3,20 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { Send, Loader2, User, Bot, Mic, MicOff, Volume2, VolumeX } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
-import remarkMath from 'remark-math'
-import rehypeKatex from 'rehype-katex'
-import 'katex/dist/katex.min.css'
+import { MathJax, MathJaxContext } from 'better-react-mathjax'
 
-// KaTeX trust context interface
-interface KatexTrustContext {
-  command: string;
-}
-
-// Enhanced KaTeX configuration for complex mathematical expressions
-const katexOptions = {
-  throwOnError: false,
-  errorColor: '#cc0000',
-  displayMode: false,
-  fleqn: false,
-  macros: {
-    "\\RR": "\\mathbb{R}",
-    "\\NN": "\\mathbb{N}",
-    "\\ZZ": "\\mathbb{Z}",
-    "\\QQ": "\\mathbb{Q}",
-    "\\CC": "\\mathbb{C}",
-    "\\FF": "\\mathbb{F}",
-    "\\PP": "\\mathbb{P}",
-    "\\EE": "\\mathbb{E}",
-    "\\dd": "\\mathrm{d}",
-    "\\ee": "\\mathrm{e}",
-    "\\ii": "\\mathrm{i}",
-    "\\oo": "\\infty",
-    "\\eps": "\\varepsilon",
-    "\\RRR": "\\mathrm{R}",
-    "\\NNN": "\\mathrm{N}",
-    "\\ZZZ": "\\mathrm{Z}",
-    "\\PPP": "\\mathrm{P}",
-    "\\dprop": "d_{\\text{prop}}",
-    "\\dtrans": "d_{\\text{trans}}",
-    "\\dendtoend": "d_{\\text{end-to-end}}",
+// MathJax configuration for LaTeX rendering
+const mathJaxConfig = {
+  tex: {
+    inlineMath: [['\\(', '\\)']],
+    displayMath: [['\\[', '\\]']],
+    processEscapes: true,
+    processEnvironments: true,
   },
-  trust: (context: KatexTrustContext) => ['\\htmlId', '\\href'].includes(context.command),
-  strict: false,
-  output: 'html',
-  minRuleThickness: 0.05,
-  maxSize: Infinity,
-  maxExpand: 1000,
-} as const
+  options: {
+    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+  },
+}
 
 // Message interface for type safety
 interface Message {
@@ -265,12 +235,12 @@ export default function RAGChat() {
 
 
   const renderMessage = (content: string) => {
-    // Let markdown renderer handle everything automatically
+    // Use MathJax to handle LaTeX expressions with \( \) delimiters
     return (
-      <ReactMarkdown
-        remarkPlugins={[[remarkMath, { singleDollarTextMath: false }]]}
-        rehypePlugins={[[rehypeKatex, katexOptions]]}
-        className="prose prose-sm dark:prose-invert max-w-none"
+      <MathJaxContext config={mathJaxConfig}>
+        <MathJax>
+          <ReactMarkdown
+            className="prose prose-sm dark:prose-invert max-w-none"
         components={{
           h1: ({ ...props }) => (
             <h1 className="text-2xl font-bold my-4 text-center" {...props} />
@@ -323,6 +293,8 @@ export default function RAGChat() {
       >
         {content}
       </ReactMarkdown>
+        </MathJax>
+      </MathJaxContext>
     )
   }
 

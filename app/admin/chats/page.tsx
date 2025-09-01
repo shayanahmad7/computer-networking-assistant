@@ -301,7 +301,9 @@ const AdminChatsPage: React.FC = () => {
       <ReactMarkdown
         remarkPlugins={[remarkMath]}
         rehypePlugins={[[rehypeKatex, katexOptions]]}
-        className="prose prose-sm dark:prose-invert max-w-none"
+        className="prose prose-sm dark:prose-invert max-w-none
+          prose-p:break-words prose-p:overflow-wrap-anywhere
+          [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:max-w-full"
         components={{
           h1: ({ ...props }) => (
             <h1 className="text-2xl font-bold my-4 text-center" {...props} />
@@ -612,6 +614,8 @@ const AdminChatsPage: React.FC = () => {
                             prose-headings:text-inherit prose-p:text-inherit
                             prose-strong:text-inherit prose-ol:text-inherit prose-ul:text-inherit
                             [&_.katex-display]:my-3 [&_.katex-display]:text-center
+                            break-words overflow-wrap-anywhere max-w-full
+                            [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:max-w-full
                           `}
                         >
                           {message.content && message.content.trim() ? (

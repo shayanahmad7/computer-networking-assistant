@@ -139,13 +139,17 @@ const AdminChatsPage: React.FC = () => {
         password // Include password for authentication
       }
 
+      console.log('🗑️ Attempting to delete chat:', deletePayload)
+
       const response = await fetch('/api/admin/chats', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(deletePayload)
       })
 
-      if (response.ok) {
+      const responseData = await response.json()
+
+      if (response.ok && responseData.success) {
         // Remove chat from local state
         setChats(prevChats => prevChats.filter(chat => chat.id !== chatId))
 
@@ -154,10 +158,11 @@ const AdminChatsPage: React.FC = () => {
           setSelectedChat(null)
         }
 
+        console.log('✅ Chat deleted successfully:', { chatId, collectionName })
         alert('Chat deleted successfully')
       } else {
-        const errorData = await response.json()
-        alert(`Failed to delete chat: ${errorData.error || 'Unknown error'}`)
+        console.error('❌ Failed to delete chat:', responseData)
+        alert(`Failed to delete chat: ${responseData.error || 'Unknown error'}`)
       }
     } catch (error) {
       console.error('Error deleting chat:', error)

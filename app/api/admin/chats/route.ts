@@ -190,8 +190,11 @@ export async function DELETE(request: NextRequest) {
     const body = await request.json();
     const { chatId, collectionName, password } = body;
 
+    console.log('[DELETE] Attempting to delete chat:', { chatId, collectionName });
+
     // Verify admin password
     if (!password || password !== ADMIN_PASSWORD) {
+      console.log('[DELETE] Unauthorized: Invalid password');
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -199,6 +202,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     if (!chatId) {
+      console.log('[DELETE] Error: chatId is required');
       return NextResponse.json(
         { error: 'chatId is required' },
         { status: 400 }
@@ -210,31 +214,62 @@ export async function DELETE(request: NextRequest) {
     const db = client.db('computer_networking_assistant');
 
     let deleteResult;
+    let targetCollection = 'unknown';
 
+    // Try different deletion strategies based on collection type
     if (collectionName && collectionName !== 'messages') {
-      // Delete from chapter-specific collection
+      // Delete from chapter-specific collection (e.g., chapter1_messages)
+      targetCollection = collectionName;
       const collection = db.collection(collectionName);
-      deleteResult = await collection.deleteOne({ _id: chatId });
-    } else {
-      // Try to delete from chat_threads collection (for RAG chats)
-      const chatThreadsCollection = db.collection('chat_threads');
-      deleteResult = await chatThreadsCollection.deleteOne({ _id: chatId });
 
-      // If not found in chat_threads, try the legacy messages collection
+      // Try deleting by _id first
+      deleteResult = await collection.deleteOne({ _id: chatId });
+      console.log(`[DELETE] Tried deleting by _id from ${collectionName}:`, deleteResult.deletedCount);
+
+      // If not found by _id, try by threadId
       if (deleteResult.deletedCount === 0) {
-        const messagesCollection = db.collection('messages');
-        deleteResult = await messagesCollection.deleteOne({ _id: chatId });
+        deleteResult = await collection.deleteOne({ threadId: chatId });
+        console.log(`[DELETE] Tried deleting by threadId from ${collectionName}:`, deleteResult.deletedCount);
+      }
+
+      // If still not found, try by sessionId
+      if (deleteResult.deletedCount === 0) {
+        deleteResult = await collection.deleteOne({ sessionId: chatId });
+        console.log(`[DELETE] Tried deleting by sessionId from ${collectionName}:`, deleteResult.deletedCount);
+      }
+
+    } else {
+      // Try multiple collections for non-specific collectionName
+      const collectionsToTry = ['chat_threads', 'messages'];
+
+      for (const collName of collectionsToTry) {
+        targetCollection = collName;
+        const collection = db.collection(collName);
+
+        // Try deleting by _id
+        deleteResult = await collection.deleteOne({ _id: chatId });
+        console.log(`[DELETE] Tried deleting by _id from ${collName}:`, deleteResult.deletedCount);
+
+        if (deleteResult.deletedCount > 0) break;
+
+        // Try by sessionId
+        deleteResult = await collection.deleteOne({ sessionId: chatId });
+        console.log(`[DELETE] Tried deleting by sessionId from ${collName}:`, deleteResult.deletedCount);
+
+        if (deleteResult.deletedCount > 0) break;
       }
     }
 
     await client.close();
 
-    if (deleteResult.deletedCount > 0) {
+    if (deleteResult && deleteResult.deletedCount > 0) {
+      console.log(`[DELETE] ✅ Successfully deleted chat ${chatId} from ${targetCollection}`);
       return NextResponse.json({
         success: true,
         message: 'Chat deleted successfully'
       });
     } else {
+      console.log(`[DELETE] ❌ Chat ${chatId} not found in any collection`);
       return NextResponse.json(
         { error: 'Chat not found' },
         { status: 404 }
@@ -242,7 +277,7 @@ export async function DELETE(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Error deleting chat:', error);
+    console.error('[DELETE] Error deleting chat:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

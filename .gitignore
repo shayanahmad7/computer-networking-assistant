@@ -67,6 +67,7 @@ sample-env.txt
 scripts/test-chapter-assistants.js
 scripts/test-chapter-4.js
 scripts/debug-api.js
+scripts/debug-delete.js
 scripts/check-test-results.js
 
 # additional test files

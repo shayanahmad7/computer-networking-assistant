@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { MongoClient } from 'mongodb';
+import { MongoClient, ObjectId } from 'mongodb';
 
 const uri = process.env.MONGODB_URI as string;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD as string;
@@ -212,7 +212,6 @@ export async function DELETE(request: NextRequest) {
     const client = new MongoClient(uri);
     await client.connect();
     const db = client.db('computer_networking_assistant');
-    const { ObjectId } = require('mongodb');
 
     let deleteResult;
     let targetCollection = 'unknown';
@@ -233,8 +232,8 @@ export async function DELETE(request: NextRequest) {
             console.log(`[DELETE] Invalid ObjectId format: ${chatId}`);
             deleteResult = { deletedCount: 0 };
           }
-        } catch (e) {
-          console.log(`[DELETE] ObjectId conversion failed for ${chatId}:`, e);
+        } catch (error) {
+          console.log(`[DELETE] ObjectId conversion failed for ${chatId}:`, error);
           deleteResult = { deletedCount: 0 };
         }
       } else if (collectionName === 'chat_threads') {
@@ -247,8 +246,8 @@ export async function DELETE(request: NextRequest) {
             console.log(`[DELETE] Invalid ObjectId format: ${chatId}`);
             deleteResult = { deletedCount: 0 };
           }
-        } catch (e) {
-          console.log(`[DELETE] ObjectId conversion failed for ${chatId}:`, e);
+        } catch (error) {
+          console.log(`[DELETE] ObjectId conversion failed for ${chatId}:`, error);
           deleteResult = { deletedCount: 0 };
         }
       } else {
@@ -260,7 +259,7 @@ export async function DELETE(request: NextRequest) {
           } else {
             deleteResult = { deletedCount: 0 };
           }
-        } catch (e) {
+        } catch {
           deleteResult = { deletedCount: 0 };
         }
 
@@ -292,7 +291,7 @@ export async function DELETE(request: NextRequest) {
           } else {
             deleteResult = { deletedCount: 0 };
           }
-        } catch (e) {
+        } catch {
           deleteResult = { deletedCount: 0 };
         }
 

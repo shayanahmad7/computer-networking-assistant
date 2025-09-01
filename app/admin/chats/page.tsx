@@ -264,39 +264,11 @@ const AdminChatsPage: React.FC = () => {
     }
   }
 
-  // Function to preprocess LaTeX expressions from AI responses
-  const preprocessLatex = (text: string): string => {
-    return text
-      // Convert (expression) to $expression$ for inline math
-      .replace(/\(([^)]*?)\)/g, (match, expr) => {
-        // Only convert if it contains LaTeX-like content (contains \, _, ^, or common math symbols)
-        if (expr.match(/[\\_\^\+\-\*\/\=\<\>]/) && !expr.includes('$')) {
-          return `$${expr}$`;
-        }
-        return match;
-      })
-      // Convert [expression] to $$expression$$ for display math
-      .replace(/\[([^\]]*?)\]/g, (match, expr) => {
-        // Only convert if it contains LaTeX-like content
-        if (expr.match(/[\\_\^\+\-\*\/\=\<\>]/) && !expr.includes('$')) {
-          return `$$${expr}$$`;
-        }
-        return match;
-      })
-      // Convert ((expression)) to $(expression)$ for inline math with double parens
-      .replace(/\(\(([^)]*?)\)\)/g, (match, expr) => {
-        if (expr.match(/[\\_\^\+\-\*\/\=\<\>]/) && !expr.includes('$')) {
-          return `$${expr}$`;
-        }
-        return match;
-      });
-  };
+
 
   // Render message function (copied from original Chat component)
   const renderMessage = (content: string) => {
-    // Preprocess the content to handle AI's LaTeX format
-    const processedContent = preprocessLatex(content);
-
+    // Let markdown renderer handle everything automatically
     return (
       <ReactMarkdown
         remarkPlugins={[remarkMath]}
@@ -354,7 +326,7 @@ const AdminChatsPage: React.FC = () => {
           }
         }}
       >
-        {processedContent}
+        {content}
       </ReactMarkdown>
     )
   }

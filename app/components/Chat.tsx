@@ -197,64 +197,100 @@ const Chat: React.FC<ChatProps> = ({ assistantId, userId }) => {
 
 
   const renderMessage = (content: string) => {
-    // Use MathJax to handle LaTeX expressions with \( \) delimiters
+    // First render LaTeX with MathJax, then process markdown
     return (
       <MathJaxContext config={mathJaxConfig}>
         <MathJax>
-          <ReactMarkdown
-            className="prose prose-sm dark:prose-invert max-w-none"
-        components={{
-          h1: ({ ...props }) => (
-            <h1 className="text-2xl font-bold my-4 text-center" {...props} />
-          ),
-          h2: ({ ...props }) => (
-            <h2 className="text-xl font-bold my-3 text-center" {...props} />
-          ),
-          h3: ({ ...props }) => (
-            <h3 className="text-lg font-bold my-3" {...props} />
-          ),
-          p: ({ ...props }) => (
-            <p className="my-2" {...props} />
-          ),
-          ul: ({ ...props }) => (
-            <ul className="my-2 space-y-1 list-disc pl-6" {...props} />
-          ),
-          ol: ({ ...props }) => (
-            <ol className="my-2 space-y-1 list-decimal pl-6" {...props} />
-          ),
-          li: ({ ...props }) => (
-            <li className="leading-normal" {...props} />
-          ),
-          blockquote: ({ ...props }) => (
-            <blockquote className="border-l-4 border-gray-300 pl-4 my-2" {...props} />
-          ),
-          // Enhanced math rendering with error handling
-          div: ({ className, ...props }) => {
-            if (className && className.includes('math-display')) {
-              return (
-                <div
-                  className={`${className} my-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border overflow-x-auto`}
-                  {...props}
-                />
-              )
-            }
-            return <div className={className} {...props} />
-          },
-          span: ({ className, ...props }) => {
-            if (className && className.includes('math-inline')) {
-              return (
-                <span
-                  className={`${className} mx-1`}
-                  {...props}
-                />
-              )
-            }
-            return <span className={className} {...props} />
-          }
-        }}
-      >
-        {content}
-      </ReactMarkdown>
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown
+              components={{
+                h1: ({ ...props }) => (
+                  <h1 className="text-2xl font-bold my-4 text-center" {...props} />
+                ),
+                h2: ({ ...props }) => (
+                  <h2 className="text-xl font-semibold my-3 text-center" {...props} />
+                ),
+                h3: ({ ...props }) => (
+                  <h3 className="text-lg font-medium my-2 text-center" {...props} />
+                ),
+                p: ({ ...props }) => (
+                  <p className="mb-2 leading-relaxed" {...props} />
+                ),
+                ul: ({ ...props }) => (
+                  <ul className="list-disc list-inside mb-2 space-y-1" {...props} />
+                ),
+                ol: ({ ...props }) => (
+                  <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />
+                ),
+                li: ({ ...props }) => (
+                  <li className="ml-2" {...props} />
+                ),
+                blockquote: ({ ...props }) => (
+                  <blockquote className="border-l-4 border-blue-500 pl-4 italic my-2" {...props} />
+                ),
+                code: ({ className, children, ...props }) => {
+                  const match = /language-(\w+)/.exec(className || '')
+                  return match ? (
+                    <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto my-2">
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    </pre>
+                  ) : (
+                    <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm" {...props}>
+                      {children}
+                    </code>
+                  )
+                },
+                pre: ({ ...props }) => (
+                  <pre className="bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-x-auto my-2" {...props} />
+                ),
+                a: ({ href, children, ...props }) => (
+                  <a 
+                    href={href} 
+                    className="text-blue-600 dark:text-blue-400 hover:underline" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    {...props}
+                  >
+                    {children}
+                  </a>
+                ),
+                strong: ({ ...props }) => (
+                  <strong className="font-bold" {...props} />
+                ),
+                em: ({ ...props }) => (
+                  <em className="italic" {...props} />
+                ),
+                table: ({ ...props }) => (
+                  <div className="overflow-x-auto my-4">
+                    <table className="min-w-full border-collapse border border-gray-300" {...props} />
+                  </div>
+                ),
+                th: ({ ...props }) => (
+                  <th className="border border-gray-300 px-4 py-2 bg-gray-100 dark:bg-gray-700 font-semibold" {...props} />
+                ),
+                td: ({ ...props }) => (
+                  <td className="border border-gray-300 px-4 py-2" {...props} />
+                ),
+                hr: ({ ...props }) => (
+                  <hr className="my-4 border-gray-300" {...props} />
+                ),
+                span: ({ className, ...props }) => {
+                  if (className?.includes('katex-display')) {
+                    return (
+                      <div className="my-4 text-center">
+                        <span className={className} {...props} />
+                      </div>
+                    )
+                  }
+                  return <span className={className} {...props} />
+                }
+              }}
+            >
+              {content}
+            </ReactMarkdown>
+          </div>
         </MathJax>
       </MathJaxContext>
     )

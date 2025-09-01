@@ -235,12 +235,12 @@ export default function RAGChat() {
 
 
   const renderMessage = (content: string) => {
-    // Use MathJax to handle LaTeX expressions with \( \) delimiters
+    // First render LaTeX with MathJax, then process markdown
     return (
       <MathJaxContext config={mathJaxConfig}>
         <MathJax>
-          <ReactMarkdown
-            className="prose prose-sm dark:prose-invert max-w-none"
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown
         components={{
           h1: ({ ...props }) => (
             <h1 className="text-2xl font-bold my-4 text-center" {...props} />
@@ -293,6 +293,7 @@ export default function RAGChat() {
       >
         {content}
       </ReactMarkdown>
+          </div>
         </MathJax>
       </MathJaxContext>
     )

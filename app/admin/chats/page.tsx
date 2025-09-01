@@ -238,14 +238,14 @@ const AdminChatsPage: React.FC = () => {
 
   // Render message function (copied from original Chat component)
   const renderMessage = (content: string) => {
-    // Use MathJax to handle LaTeX expressions with \( \) delimiters
+    // First render LaTeX with MathJax, then process markdown
     return (
       <MathJaxContext config={mathJaxConfig}>
         <MathJax>
-          <ReactMarkdown
-            className="prose prose-sm dark:prose-invert max-w-none
-              prose-p:break-words prose-p:overflow-wrap-anywhere
-              [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:max-w-full"
+          <div className="prose prose-sm dark:prose-invert max-w-none
+            prose-p:break-words prose-p:overflow-wrap-anywhere
+            [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:max-w-full">
+            <ReactMarkdown
         components={{
           h1: ({ ...props }) => (
             <h1 className="text-2xl font-bold my-4 text-center" {...props} />
@@ -298,6 +298,7 @@ const AdminChatsPage: React.FC = () => {
       >
         {content}
       </ReactMarkdown>
+          </div>
         </MathJax>
       </MathJaxContext>
     )

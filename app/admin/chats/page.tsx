@@ -3,20 +3,44 @@
 import React, { useState } from 'react'
 import { Eye, EyeOff, Lock, MessageSquare, Calendar, User, Bot, ChevronDown, ChevronRight, Volume2, VolumeX, RefreshCw, Home, Trash2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
-import { MathJax, MathJaxContext } from 'better-react-mathjax'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 
-// MathJax configuration for LaTeX rendering
-const mathJaxConfig = {
-  tex: {
-    inlineMath: [['\\(', '\\)']],
-    displayMath: [['\\[', '\\]']],
-    processEscapes: true,
-    processEnvironments: true,
+// KaTeX configuration for LaTeX rendering
+const katexOptions = {
+  throwOnError: false,
+  errorColor: '#cc0000',
+  displayMode: false,
+  fleqn: false,
+  macros: {
+    "\\RR": "\\mathbb{R}",
+    "\\NN": "\\mathbb{N}",
+    "\\ZZ": "\\mathbb{Z}",
+    "\\QQ": "\\mathbb{Q}",
+    "\\CC": "\\mathbb{C}",
+    "\\FF": "\\mathbb{F}",
+    "\\PP": "\\mathbb{P}",
+    "\\EE": "\\mathbb{E}",
+    "\\dd": "\\mathrm{d}",
+    "\\ee": "\\mathrm{e}",
+    "\\ii": "\\mathrm{i}",
+    "\\oo": "\\infty",
+    "\\eps": "\\varepsilon",
+    "\\RRR": "\\mathrm{R}",
+    "\\NNN": "\\mathrm{N}",
+    "\\ZZZ": "\\mathrm{Z}",
+    "\\PPP": "\\mathrm{P}",
+    "\\dprop": "d_{\\text{prop}}",
+    "\\dtrans": "d_{\\text{trans}}",
+    "\\dendtoend": "d_{\\text{end-to-end}}",
   },
-  options: {
-    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
-  },
-}
+  strict: false,
+  output: 'html',
+  minRuleThickness: 0.05,
+  maxSize: Infinity,
+  maxExpand: 1000,
+} as const
 
 interface ChatThread {
   id: string;
@@ -237,33 +261,39 @@ const AdminChatsPage: React.FC = () => {
 
 
   // Render message function (copied from original Chat component)
-  const renderMessage = (content: string) => {
-    // First render LaTeX with MathJax, then process markdown
+  const renderMessage = (content: string, isUserMessage: boolean = false) => {
+    // Convert AI's \( \) delimiters to $ delimiters for remark-math
+    const processedContent = content
+      .replace(/\\\(/g, '$')
+      .replace(/\\\)/g, '$')
+      .replace(/\\\[/g, '$$')
+      .replace(/\\\]/g, '$$');
+    
     return (
-      <MathJaxContext config={mathJaxConfig}>
-        <MathJax>
-          <div className="prose prose-sm dark:prose-invert max-w-none
-            prose-p:break-words prose-p:overflow-wrap-anywhere
-            [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:max-w-full">
-            <ReactMarkdown
+      <ReactMarkdown
+        remarkPlugins={[remarkMath]}
+        rehypePlugins={[[rehypeKatex, katexOptions]]}
+        className="prose prose-sm dark:prose-invert max-w-none
+          prose-p:break-words prose-p:overflow-wrap-anywhere
+          [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:max-w-full"
         components={{
           h1: ({ ...props }) => (
-            <h1 className="text-2xl font-bold my-4 text-center" {...props} />
+            <h1 className={`text-2xl font-bold my-4 text-center ${isUserMessage ? 'text-white' : 'text-gray-900 dark:text-gray-100'}`} {...props} />
           ),
           h2: ({ ...props }) => (
-            <h2 className="text-xl font-bold my-3 text-center" {...props} />
+            <h2 className={`text-xl font-semibold my-3 text-center ${isUserMessage ? 'text-white' : 'text-gray-900 dark:text-gray-100'}`} {...props} />
           ),
           h3: ({ ...props }) => (
-            <h3 className="text-lg font-bold my-3" {...props} />
+            <h3 className={`text-lg font-medium my-2 text-center ${isUserMessage ? 'text-white' : 'text-gray-900 dark:text-gray-100'}`} {...props} />
           ),
           p: ({ ...props }) => (
-            <p className="my-2" {...props} />
+            <p className={`my-2 leading-relaxed font-medium font-sans ${isUserMessage ? 'text-white' : 'text-gray-800 dark:text-gray-200'}`} {...props} />
           ),
           ul: ({ ...props }) => (
-            <ul className="my-2 space-y-1 list-disc pl-6" {...props} />
+            <ul className="my-2 space-y-1 list-disc pl-6 font-sans" {...props} />
           ),
           ol: ({ ...props }) => (
-            <ol className="my-2 space-y-1 list-decimal pl-6" {...props} />
+            <ol className="my-2 space-y-1 list-decimal pl-6 font-sans" {...props} />
           ),
           li: ({ ...props }) => (
             <li className="leading-normal" {...props} />
@@ -296,11 +326,8 @@ const AdminChatsPage: React.FC = () => {
           }
         }}
       >
-        {content}
+        {processedContent}
       </ReactMarkdown>
-          </div>
-        </MathJax>
-      </MathJaxContext>
     )
   }
 
@@ -310,14 +337,14 @@ const AdminChatsPage: React.FC = () => {
         <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
             <Lock className="mx-auto h-16 w-16 text-blue-500 mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900">Admin Access</h1>
-            <p className="text-gray-600 mt-2">Enter password to view chat history</p>
+            <h1 className="text-2xl font-bold text-gray-900 font-serif">Admin Access</h1>
+            <p className="text-gray-700 mt-2 font-medium leading-relaxed font-sans">Enter password to view chat history</p>
 
           </div>
 
           <form onSubmit={handleAuthentication} className="space-y-6">
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2 font-sans">
                 Password
               </label>
               <div className="relative">
@@ -326,7 +353,7 @@ const AdminChatsPage: React.FC = () => {
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12 font-medium text-gray-800 placeholder-gray-500 font-sans"
                   placeholder="Enter admin password"
                   required
                 />
@@ -341,7 +368,7 @@ const AdminChatsPage: React.FC = () => {
             </div>
 
             {error && (
-              <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-lg">
+              <div className="text-red-600 text-sm text-center bg-red-50 p-3 rounded-lg font-medium font-sans">
                 {error}
               </div>
             )}
@@ -349,13 +376,13 @@ const AdminChatsPage: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-semibold py-3 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-medium py-3 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-sans"
             >
               {loading ? 'Authenticating...' : 'Access Admin Panel'}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-500">
+          <div className="mt-6 text-center text-sm text-gray-500 font-medium font-sans">
             This page is for research purposes only
           </div>
         </div>
@@ -372,25 +399,25 @@ const AdminChatsPage: React.FC = () => {
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Chat History</h2>
-                  <p className="text-gray-600 text-sm mt-1">{chats.length} conversations total</p>
+                  <h2 className="text-xl font-bold text-gray-900 font-serif">Chat History</h2>
+                  <p className="text-gray-700 text-sm mt-1 font-medium leading-relaxed font-sans">{chats.length} conversations total</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={handleRefresh}
                     disabled={refreshing}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-lg transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded text-sm transition-colors font-medium font-sans"
                     title="Refresh chat history"
                   >
-                    <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
                     {refreshing ? 'Refreshing...' : 'Refresh'}
                   </button>
                   <button
                     onClick={handleGoHome}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm transition-colors font-medium font-sans"
                     title="Go back to home page"
                   >
-                    <Home className="h-4 w-4" />
+                    <Home className="h-3 w-3" />
                     Home
                   </button>
                 </div>
@@ -411,15 +438,15 @@ const AdminChatsPage: React.FC = () => {
                         <ChevronRight className="h-4 w-4 mr-2 text-gray-500" />
                       )}
                       <div className="flex-1">
-                        <div className="font-semibold text-gray-900 text-sm">
+                        <div className="font-medium text-gray-900 text-sm font-sans">
                           {assistantName}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 font-medium font-sans">
                           {assistantChats.length} chats
                         </div>
                       </div>
                       <div className="ml-2">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium font-sans ${
                           assistantName.includes('Custom RAG')
                             ? 'bg-purple-100 text-purple-800'
                             : assistantName.includes('Legacy')
@@ -447,20 +474,20 @@ const AdminChatsPage: React.FC = () => {
                         >
                           <div className="flex items-start justify-between mb-1">
                             <div className="flex-1">
-                              <div className="text-xs text-gray-500 font-mono">
+                              <div className="text-xs text-gray-500 font-mono font-medium font-sans">
                                 Session: {chat.sessionId.substring(0, 12)}...
                               </div>
-                              <div className="text-xs text-gray-500 font-mono">
+                              <div className="text-xs text-gray-500 font-mono font-medium font-sans">
                                 User: {chat.userId.substring(0, 12)}...
                               </div>
                               {chat.collectionName && chat.collectionName !== 'messages' && (
-                                <div className="text-xs text-gray-400 font-mono">
+                                <div className="text-xs text-gray-400 font-mono font-medium font-sans">
                                   {chat.collectionName.replace('_messages', '')}
                                 </div>
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-gray-500 font-medium font-sans">
                                 {chat.messageCount} msgs
                               </div>
                               <button
@@ -476,11 +503,11 @@ const AdminChatsPage: React.FC = () => {
                             </div>
                           </div>
 
-                          <p className="text-sm text-gray-700 mb-1 line-clamp-2">
+                          <p className="text-sm text-gray-700 mb-1 line-clamp-2 font-medium font-sans">
                             {chat.firstMessage}
                           </p>
 
-                          <div className="text-xs text-gray-500">
+                          <div className="text-xs text-gray-500 font-medium font-sans">
                             {formatDate(chat.updatedAt)}
                           </div>
                         </div>
@@ -502,10 +529,10 @@ const AdminChatsPage: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-medium text-gray-900 font-serif">
                           {getAssistantName(selectedChat)}
                         </h3>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium font-sans ${
                           selectedChat.assistantType === 'Custom RAG'
                             ? 'bg-purple-100 text-purple-800'
                             : selectedChat.assistantType.includes('Legacy')
@@ -515,19 +542,19 @@ const AdminChatsPage: React.FC = () => {
                           {selectedChat.assistantType}
                         </span>
                       </div>
-                      <div className="flex items-center text-sm text-gray-600">
+                      <div className="flex items-center text-sm text-gray-600 font-medium font-sans">
                         <Calendar className="h-4 w-4 mr-1" />
                         Started: {formatDate(selectedChat.createdAt)}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1 font-mono">
+                      <div className="text-xs text-gray-500 mt-1 font-mono font-medium font-sans">
                         Session: {selectedChat.sessionId}
                       </div>
-                                                   <div className="text-xs text-gray-500 mt-1 font-mono">
-                               User ID: {selectedChat.userId}
-                             </div>
+                      <div className="text-xs text-gray-500 mt-1 font-mono font-medium font-sans">
+                        User ID: {selectedChat.userId}
+                      </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-gray-600 font-medium font-sans">
                         {selectedChat.messageCount} messages
                       </div>
 
@@ -546,7 +573,7 @@ const AdminChatsPage: React.FC = () => {
                     <div key={index} className={`mb-4 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       <div
                         className={`flex max-w-[80%] items-start rounded-2xl px-4 py-3 ${
-                          message.role === 'user' ? 'bg-blue-500 text-white' : 'bg-white text-gray-800 shadow'
+                          message.role === 'user' ? 'bg-blue-500 text-white font-medium !text-white' : 'bg-white text-gray-800 shadow font-medium'
                         }`}
                       >
                         {message.role === 'user' ? (
@@ -554,19 +581,23 @@ const AdminChatsPage: React.FC = () => {
                         ) : (
                           <Bot className="mr-2 h-5 w-5 shrink-0 mt-1" />
                         )}
-                        <div
-                          className={`${message.role === 'user' ? 'prose-invert' : ''}
-                            prose-headings:text-inherit prose-p:text-inherit
-                            prose-strong:text-inherit prose-ol:text-inherit prose-ul:text-inherit
-                            [&_.katex-display]:my-3 [&_.katex-display]:text-center
-                            break-words overflow-wrap-anywhere max-w-full
-                            [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:max-w-full
-                          `}
-                        >
+                        <div className="flex-1">
                           {message.content && message.content.trim() ? (
-                            renderMessage(message.content)
+                            message.role === 'user' ? (
+                              <span className="text-white font-medium text-base break-words overflow-wrap-anywhere max-w-full font-sans">{message.content}</span>
+                            ) : (
+                              <div 
+                                className="prose-headings:text-inherit prose-p:text-inherit
+                                  prose-strong:text-inherit prose-ol:text-inherit prose-ul:text-inherit
+                                  [&_.katex-display]:my-3 [&_.katex-display]:text-center
+                                  break-words overflow-wrap-anywhere max-w-full
+                                  [&_*]:break-words [&_*]:overflow-wrap-anywhere [&_*]:max-w-full text-base"
+                              >
+                                {renderMessage(message.content)}
+                              </div>
+                            )
                           ) : (
-                            <div className="text-gray-500 italic">
+                            <div className="text-gray-500 italic font-medium font-sans">
                               [Empty message - {message.role}]
                             </div>
                           )}
@@ -579,7 +610,7 @@ const AdminChatsPage: React.FC = () => {
                             className={`ml-2 p-2 rounded-full transition-colors ${
                               currentlySpeakingId === `message-${index}`
                                 ? 'bg-red-100 text-red-600 hover:bg-red-200'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 font-medium font-sans'
                             }`}
                             title={currentlySpeakingId === `message-${index}` ? 'Stop speaking' : 'Listen to this message'}
                           >
@@ -602,10 +633,10 @@ const AdminChatsPage: React.FC = () => {
               </>
             ) : (
               <div className="flex-1 flex items-center justify-center bg-gray-50">
-                <div className="text-center text-gray-500">
+                <div className="text-center text-gray-500 font-medium leading-relaxed font-sans">
                   <MessageSquare className="mx-auto h-16 w-16 mb-4" />
-                  <p>Select a chat from the sidebar to view</p>
-                  <p className="text-sm mt-2">Click on an assistant to expand and see all chats</p>
+                  <p className="font-medium font-sans">Select a chat from the sidebar to view</p>
+                  <p className="text-sm mt-2 font-medium font-sans">Click on an assistant to expand and see all chats</p>
                 </div>
               </div>
             )}

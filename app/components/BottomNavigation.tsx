@@ -46,7 +46,7 @@ const BottomNavigation = ({ chapterNumber, isRAG = false }: BottomNavigationProp
             <span className="mr-2">←</span>
             <div className="text-left">
               <div className="text-xs opacity-75">Previous</div>
-              <div className="font-medium">Chapter {getPrevChapter()}</div>
+              <div className="font-medium font-sans">Chapter {getPrevChapter()}</div>
             </div>
           </Link>
         </div>
@@ -61,7 +61,7 @@ const BottomNavigation = ({ chapterNumber, isRAG = false }: BottomNavigationProp
           >
             <div className="text-right">
               <div className="text-xs opacity-75">Next</div>
-              <div className="font-medium">{getNextChapterText()?.replace(' →', '')}</div>
+              <div className="font-medium font-sans">{getNextChapterText()?.replace(' →', '')}</div>
             </div>
             <span className="ml-2">→</span>
           </Link>

@@ -3,20 +3,44 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { Send, Loader2, User, Bot, Mic, MicOff, Volume2, VolumeX } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
-import { MathJax, MathJaxContext } from 'better-react-mathjax'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 
-// MathJax configuration for LaTeX rendering
-const mathJaxConfig = {
-  tex: {
-    inlineMath: [['\\(', '\\)']],
-    displayMath: [['\\[', '\\]']],
-    processEscapes: true,
-    processEnvironments: true,
+// KaTeX configuration for LaTeX rendering
+const katexOptions = {
+  throwOnError: false,
+  errorColor: '#cc0000',
+  displayMode: false,
+  fleqn: false,
+  macros: {
+    "\\RR": "\\mathbb{R}",
+    "\\NN": "\\mathbb{N}",
+    "\\ZZ": "\\mathbb{Z}",
+    "\\QQ": "\\mathbb{Q}",
+    "\\CC": "\\mathbb{C}",
+    "\\FF": "\\mathbb{F}",
+    "\\PP": "\\mathbb{P}",
+    "\\EE": "\\mathbb{E}",
+    "\\dd": "\\mathrm{d}",
+    "\\ee": "\\mathrm{e}",
+    "\\ii": "\\mathrm{i}",
+    "\\oo": "\\infty",
+    "\\eps": "\\varepsilon",
+    "\\RRR": "\\mathrm{R}",
+    "\\NNN": "\\mathrm{N}",
+    "\\ZZZ": "\\mathrm{Z}",
+    "\\PPP": "\\mathrm{P}",
+    "\\dprop": "d_{\\text{prop}}",
+    "\\dtrans": "d_{\\text{trans}}",
+    "\\dendtoend": "d_{\\text{end-to-end}}",
   },
-  options: {
-    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
-  },
-}
+  strict: false,
+  output: 'html',
+  minRuleThickness: 0.05,
+  maxSize: Infinity,
+  maxExpand: 1000,
+} as const
 
 // Message interface for type safety
 interface Message {
@@ -234,31 +258,37 @@ export default function RAGChat() {
 
 
 
-  const renderMessage = (content: string) => {
-    // First render LaTeX with MathJax, then process markdown
+  const renderMessage = (content: string, isUserMessage: boolean = false) => {
+    // Convert AI's \( \) delimiters to $ delimiters for remark-math
+    const processedContent = content
+      .replace(/\\\(/g, '$')
+      .replace(/\\\)/g, '$')
+      .replace(/\\\[/g, '$$')
+      .replace(/\\\]/g, '$$');
+    
     return (
-      <MathJaxContext config={mathJaxConfig}>
-        <MathJax>
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown
+      <ReactMarkdown
+        remarkPlugins={[remarkMath]}
+        rehypePlugins={[[rehypeKatex, katexOptions]]}
+        className="prose prose-sm dark:prose-invert max-w-none"
         components={{
           h1: ({ ...props }) => (
-            <h1 className="text-2xl font-bold my-4 text-center" {...props} />
+            <h1 className={`text-2xl font-bold my-4 text-center ${isUserMessage ? 'text-white' : 'text-gray-900 dark:text-gray-100'}`} {...props} />
           ),
           h2: ({ ...props }) => (
-            <h2 className="text-xl font-bold my-3 text-center" {...props} />
+            <h2 className={`text-xl font-semibold my-3 text-center ${isUserMessage ? 'text-white' : 'text-gray-900 dark:text-gray-100'}`} {...props} />
           ),
           h3: ({ ...props }) => (
-            <h3 className="text-lg font-bold my-3" {...props} />
+            <h3 className={`text-lg font-medium my-2 text-center ${isUserMessage ? 'text-white' : 'text-gray-900 dark:text-gray-100'}`} {...props} />
           ),
           p: ({ ...props }) => (
-            <p className="my-2" {...props} />
+            <p className={`my-2 leading-relaxed font-medium font-sans ${isUserMessage ? 'text-white' : 'text-gray-800 dark:text-gray-200'}`} {...props} />
           ),
           ul: ({ ...props }) => (
-            <ul className="my-2 space-y-1 list-disc pl-6" {...props} />
+            <ul className="my-2 space-y-1 list-disc pl-6 font-sans" {...props} />
           ),
           ol: ({ ...props }) => (
-            <ol className="my-2 space-y-1 list-decimal pl-6" {...props} />
+            <ol className="my-2 space-y-1 list-decimal pl-6 font-sans" {...props} />
           ),
           li: ({ ...props }) => (
             <li className="leading-normal" {...props} />
@@ -291,11 +321,8 @@ export default function RAGChat() {
           }
         }}
       >
-        {content}
+        {processedContent}
       </ReactMarkdown>
-          </div>
-        </MathJax>
-      </MathJaxContext>
     )
   }
 
@@ -306,7 +333,7 @@ export default function RAGChat() {
           <div key={m.id} className={`mb-4 flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             <div
               className={`flex max-w-[80%] items-start rounded-2xl px-4 py-3 ${
-                m.role === 'user' ? 'bg-blue-500 text-white' : 'bg-white text-gray-800 shadow'
+                m.role === 'user' ? 'bg-blue-500 text-white font-medium !text-white' : 'bg-white text-gray-800 shadow font-medium'
               }`}
             >
               {m.role === 'user' ? (
@@ -314,14 +341,18 @@ export default function RAGChat() {
               ) : (
                 <Bot className="mr-2 h-5 w-5 shrink-0 mt-1" />
               )}
-              <div 
-                className={`${m.role === 'user' ? 'prose-invert' : ''} 
-                  prose-headings:text-inherit prose-p:text-inherit
-                  prose-strong:text-inherit prose-ol:text-inherit prose-ul:text-inherit
-                  [&_.katex-display]:my-3 [&_.katex-display]:text-center
-                `}
-              >
-                {m.role === 'user' ? <>{m.content}</> : renderMessage(m.content)}
+              <div className="flex-1">
+                {m.role === 'user' ? (
+                  <span className="text-white font-medium text-base font-sans">{m.content}</span>
+                ) : (
+                  <div 
+                    className="prose-headings:text-inherit prose-p:text-inherit
+                      prose-strong:text-inherit prose-ol:text-inherit prose-ul:text-inherit
+                      [&_.katex-display]:my-3 [&_.katex-display]:text-center text-base"
+                  >
+                    {renderMessage(m.content)}
+                  </div>
+                )}
               </div>
               
               {/* Text-to-speech button for assistant messages */}
@@ -331,7 +362,7 @@ export default function RAGChat() {
                   className={`ml-2 p-2 rounded-full transition-colors ${
                     currentlySpeakingId === m.id
                       ? 'bg-red-100 text-red-600 hover:bg-red-200'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 font-medium font-sans'
                   }`}
                   title={currentlySpeakingId === m.id ? 'Stop speaking' : 'Listen to this message'}
                 >
@@ -347,7 +378,7 @@ export default function RAGChat() {
         ))}
         {isLoading && (
           <div className="flex justify-start items-center mb-4">
-            <div className="flex items-center rounded-full bg-white px-4 py-2 text-gray-800 shadow">
+            <div className="flex items-center rounded-full bg-white px-4 py-2 text-gray-800 shadow font-medium font-sans">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               AI is thinking...
             </div>
@@ -368,7 +399,7 @@ export default function RAGChat() {
                 ? 'animate-pulse ring-2 ring-red-500 bg-red-100 text-red-600'
                 : isProcessingAudio
                 ? 'bg-yellow-100 text-yellow-600 cursor-wait'
-                : 'bg-gray-200 hover:bg-gray-300 text-gray-600'
+                : 'bg-gray-200 hover:bg-gray-300 text-gray-600 font-medium font-sans'
             }`}
             disabled={isProcessingAudio || isLoading}
           >
@@ -388,12 +419,12 @@ export default function RAGChat() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about computer networking..."
             disabled={isLoading}
-            className="flex-1 bg-transparent px-6 py-3 focus:outline-none"
+            className="flex-1 bg-transparent px-6 py-3 focus:outline-none font-medium text-black placeholder-gray-500 font-sans"
           />
           <button
             type="submit"
             disabled={!input.trim() || isLoading}
-            className={`flex items-center rounded-r-full px-6 py-3 font-semibold text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 ${
+            className={`flex items-center rounded-r-full px-6 py-3 font-medium text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 font-sans ${
               input.trim() && !isLoading ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-400 cursor-not-allowed'
             }`}
           >

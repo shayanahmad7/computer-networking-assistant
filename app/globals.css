@@ -17,5 +17,30 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+}
+
+/* Ensure Segoe UI is used consistently across all elements */
+* {
+  font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Make Chrome render fonts like Firefox (lighter/thinner) */
+@supports (-webkit-appearance: none) {
+  * {
+    font-weight: 400 !important;
+  }
+  
+  /* Keep bold headings bold */
+  h1, h2, h3, .font-bold, .font-semibold {
+    font-weight: 600 !important;
+  }
+  
+  /* Make medium weight slightly lighter */
+  .font-medium {
+    font-weight: 400 !important;
+  }
 }

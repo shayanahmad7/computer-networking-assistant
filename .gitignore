@@ -73,3 +73,6 @@ scripts/check-test-results.js
 # additional test files
 test-results-analysis.txt
 ENVIRONMENT_VARIABLES.md
+
+# font specifications documentation
+font-specifications.md

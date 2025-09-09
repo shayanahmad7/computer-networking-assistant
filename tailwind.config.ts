@@ -12,6 +12,10 @@ export default {
         background: "var(--background)",
         foreground: "var(--foreground)",
       },
+      fontFamily: {
+        sans: ["Segoe UI", "Arial", "Helvetica", "sans-serif"],
+        serif: ["Segoe UI", "Arial", "Helvetica", "sans-serif"],
+      },
     },
   },
   plugins: [],
